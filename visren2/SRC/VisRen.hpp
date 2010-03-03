@@ -35,7 +35,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "plugin.hpp"
 #include "farkeys.hpp"
 #include "farcolor.hpp"
-//#include "PCRE77\pcre.h"
 #include "string.hpp"
 #include "VisRenLng.hpp"        // набор констант для извлечения строк из .lng файла
 

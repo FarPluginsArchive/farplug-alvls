@@ -176,7 +176,7 @@ bool RenFile::GetNewNameExt(const wchar_t *src, string &strDest,unsigned ItemInd
 		{
 			string Name(src);
 			string Ext;
-			wchar_t *ptr=wcsrchr(src,L'.');
+			wchar_t *ptr=wcsrchr((const wchar_t *)src,L'.');
 			if (ptr) { Ext=ptr+1; Name(src, (size_t)(ptr-src)); }
 
 			bool bName=!Strncmp(pMask, L"[N", 2);
@@ -533,7 +533,7 @@ bool RenFile::Replase(string &strSrc)
 								if (iDigit<=brackets)
 								{
 									i+=k;
-									for (k=match[iDigit*2].start; k<match[iDigit*2].end; k++)
+									for (k=match[iDigit].start; k<match[iDigit].end; k++)
 										strBuf+=src[k];
 								}
 								else i+=k;

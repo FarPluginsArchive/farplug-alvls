@@ -163,7 +163,7 @@ ID3TagInternal *InitializeInternalTag1(ID3v11TagReal *pRealTag)
 }
 
 
-//#define TAG2    пока валится сей код:-(
+#define TAG2
 #ifdef TAG2
 
 /****************************************************************************
@@ -372,14 +372,14 @@ void EncodeData(char *pData, DWORD dwDataSize, wchar_t **pResult, int nEncoding)
 {
 	wchar_t *wData = (wchar_t*)pData;
 	int nCount;
-	*pResult = (wchar_t*)malloc(dwDataSize+1);
+	*pResult = (wchar_t*)malloc((dwDataSize+1)*sizeof(wchar_t));
 
 	switch (nEncoding)
 	{
 		case ENCODING_ISO_8859_1:
 			MultiByteToWideChar(CP_ACP,0,pData,-1,*pResult,dwDataSize);
 			break;
-/*
+
 		// они разные, но вот писалки глючные...
 		case ENCODING_UTF_16_BOM:
 		case ENCODING_UTF_16_NO_BOM:
@@ -389,14 +389,12 @@ void EncodeData(char *pData, DWORD dwDataSize, wchar_t **pResult, int nEncoding)
 			if (wData[0] == 0xFFFE)
 				for (int i=0; i<nCount; i++)
 					wData[i] = MAKEWORD(HIBYTE(wData[i]), LOBYTE(wData[i]));
-			wData++;
-			nCount--;
-			lstrcpyn(*pResult, wData, nCount);
+			lstrcpyn(*pResult, wData+1,dwDataSize-1);
 			break;
 		}
 		case ENCODING_UTF_8:
 			// no support;
-			break;    */
+			break;
 	}
 }
 

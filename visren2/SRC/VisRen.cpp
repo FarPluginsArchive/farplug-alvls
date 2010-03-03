@@ -29,7 +29,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $ Revision: 11.0 $ */
+/* $ Revision: 12.0 $ */
 
 #include "VisRen.hpp"
 #include "VisRenDlg.hpp"
