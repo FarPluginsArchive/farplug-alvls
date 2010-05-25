@@ -79,6 +79,10 @@ void VisRenDlg::GetDlgSize()
 	CONSOLE_SCREEN_BUFFER_INFO csbiNfo;
 	if (GetConsoleScreenBufferInfo(hConOut, &csbiNfo))
 	{
+		// необходимо после правки FAR: drkns 22.05.2010 20:00:00 +0200 - build 1564
+		csbiNfo.dwSize.X=csbiNfo.srWindow.Right-csbiNfo.srWindow.Left+1;
+		csbiNfo.dwSize.Y=csbiNfo.srWindow.Bottom-csbiNfo.srWindow.Top+1;
+
 		if (csbiNfo.dwSize.X-2 != DlgSize.mW)
 		{
 			DlgSize.mW=csbiNfo.dwSize.X-2;
@@ -86,6 +90,7 @@ void VisRenDlg::GetDlgSize()
 			DlgSize.mW2=(DlgSize.mW)/2-2;
 		}
 		if (csbiNfo.dwSize.Y-2 != DlgSize.mH) DlgSize.mH=csbiNfo.dwSize.Y-2;
+
 	}
 	CloseHandle(hConOut);
 }
@@ -1182,7 +1187,7 @@ LONG_PTR WINAPI VisRenDlg::ShowDialogProc(HANDLE hDlg, int Msg, int Param1, LONG
 			if (Param1==DlgREN && Opt.LoadUndo)
 			{
 				const wchar_t *MsgItems[]={ GetMsg(MUndoTitle), GetMsg(MUndoBody) };
-				switch (Info.Message(Info.ModuleNumber,FMSG_DOWN|FMSG_WARNING|FMSG_MB_YESNOCANCEL,0,MsgItems,2,0))
+				switch (Info.Message(Info.ModuleNumber,FMSG_WARNING|FMSG_MB_YESNOCANCEL,0,MsgItems,2,0))
 				{
 					case 0:
 						Opt.Undo=1; return true;

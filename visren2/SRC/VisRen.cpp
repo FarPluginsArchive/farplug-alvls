@@ -29,7 +29,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $ Revision: 12.0 $ */
+/* $ Revision: 13.0 $ */
 
 #include "VisRen.hpp"
 #include "VisRenDlg.hpp"
@@ -142,7 +142,7 @@ int DebugMsg(wchar_t *msg, wchar_t *msg2, unsigned int i)
  * Эти функции плагина FAR вызывает в первую очередь
  ****************************************************************************/
 // установим минимально поддерживаемую версию FARа...
-int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1430); }
+int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1572); }
 
 // заполним структуру PluginStartupInfo и сделаем ряд полезных действий...
 void WINAPI _export SetStartupInfoW(const struct PluginStartupInfo *Info)
