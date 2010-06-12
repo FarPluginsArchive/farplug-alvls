@@ -8,8 +8,8 @@ rem =============== Use Microsoft Visual Studio .NET 2003 ======================
 rem  ======================== Set name and version ... =========================
 
 @set PlugName=VisRen
-@set fileversion=2,0,0,13
-@set fileversion_str=2.0 build 13
+@set fileversion=2,0,0,14
+@set fileversion_str=2.0 build 14
 @set MyDir=%CD%
 @set companyname=Eugene Roshal ^& FAR Group
 @set filedescription=Visual renaming files for FAR Manager

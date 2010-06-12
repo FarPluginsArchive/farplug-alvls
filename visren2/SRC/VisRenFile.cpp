@@ -1102,6 +1102,7 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 
 	Info.Control(PANEL_ACTIVE,FCTL_ENDSELECTION,0,0);
 	Info.Control(PANEL_ACTIVE,FCTL_REDRAWPANEL,0, Opt.Undo?(LONG_PTR)&RInfo:0);
+	Info.Control(PANEL_ACTIVE,FCTL_UPDATEPANEL,1,0);
 
 	return true;
 }

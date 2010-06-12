@@ -393,7 +393,7 @@ void EncodeData(char *pData, DWORD dwDataSize, wchar_t **pResult, int nEncoding)
 			break;
 		}
 		case ENCODING_UTF_8:
-			// no support;
+			MultiByteToWideChar(CP_UTF8,0,pData,-1,*pResult,dwDataSize);
 			break;
 	}
 }
