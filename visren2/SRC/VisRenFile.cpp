@@ -865,6 +865,19 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	PanelRedrawInfo RInfo={0,0};
 	SetLastError(ERROR_SUCCESS);
 
+	string strDir;
+	size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
+	wchar_t *buf=strDir.get(size/*+1+8*/);  //+1 для FSF.AddEndSlash() +8 для "\\?\UNC\"
+	Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)buf);
+	strDir.updsize();
+
+/* префиксы нельзя передавать в ФАР в текущем ФАР АПИ !!!
+	size=FSF.ConvertPath(CPM_NATIVE,buf,0,0);
+	FSF.ConvertPath(CPM_NATIVE,buf,buf,size);
+	strDir.updsize();
+	FSF.AddEndSlash(buf);
+	strDir.updsize();
+*/
 	Info.Control(PANEL_ACTIVE,FCTL_BEGINSELECTION,0,0);
 
 	// вначале снимем выделение на панели
@@ -873,14 +886,6 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 
 	if (!Opt.Undo)
 	{
-		string strDir;
-		size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
-		wchar_t *buf=strDir.get(size+1);  //+1 для FSF.AddEndSlash()
-		Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)buf);
-		strDir.updsize();
-		FSF.AddEndSlash(buf);
-		strDir.updsize();
-
 		Count=FileList.Count();
 
 		for (File *Item=FileList.First(); Item != NULL; Item=FileList.Next(Item))
@@ -891,11 +896,17 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 			// Имена совпадают - пропустим переименование
 			if (!Strncmp(src, dest)) continue;
 
-			string srcFull=L"\\\\?\\";
-			srcFull+=strDir.get();
+			size_t n=FSF.ConvertPath(CPM_NATIVE,strDir.get(),0,0);
+			string strNativeDir;
+			wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
+			FSF.ConvertPath(CPM_NATIVE,strDir.get(),buf2,n);
+			strNativeDir.updsize();
+			FSF.AddEndSlash(buf2);
+			strNativeDir.updsize();
+
+			string srcFull=strNativeDir.get();
 			srcFull+=src;
-			string destFull=L"\\\\?\\";
-			destFull+=strDir.get();
+			string destFull=strNativeDir.get();
 			destFull+=dest;
 
  RETRY_1:
@@ -994,19 +1005,21 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	}
 	else
 	{
-		string strDir(Undo.Dir,wcslen(Undo.Dir)+2);
-		FSF.AddEndSlash(strDir.get());
-		strDir.updsize();
-
 		Count=Undo.iCount;
 
 		for (i=Count-1; i>=0; i--)
 		{
-			string srcFull=L"\\\\?\\";
-			srcFull+=strDir;
+			size_t n=FSF.ConvertPath(CPM_NATIVE,Undo.Dir,0,0);
+			string strNativeDir;
+			wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
+			FSF.ConvertPath(CPM_NATIVE,Undo.Dir,buf2,n);
+			strNativeDir.updsize();
+			FSF.AddEndSlash(buf2);
+			strNativeDir.updsize();
+
+			string srcFull=strNativeDir.get();
 			srcFull+=Undo.CurFileName[i];
-			string destFull=L"\\\\?\\";
-			destFull+=strDir;
+			string destFull=strNativeDir.get();
 			destFull+=Undo.OldFileName[i];
 
  RETRY_2:
@@ -1076,26 +1089,20 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	if (Undo.iCount=iUndo)
 	{
 		// ...запомним тогда и каталог
-		string strDir;
-		size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
-		wchar_t *buf=strDir.get(size);
-		Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)buf);
-		strDir.updsize();
-
 		if (!(Undo.Dir=(wchar_t*)realloc(Undo.Dir, (strDir.length()+1)*sizeof(wchar_t))) )
 		{
 			FreeUndo();
 			ErrorMsg(MVRenTitle, MErrorCreateLog);
 		}
 		else
-			wcscpy(Undo.Dir, buf);
+			wcscpy(Undo.Dir, strDir.get());
 	}
 
 	if (iRen)
 	{
-		wchar_t buf[15];
-		FSF.sprintf(buf, GetMsg(MProcessedFmt), iRen, Count);
-		const wchar_t *MsgItems[]={GetMsg(MVRenTitle), buf, GetMsg(MOK)};
+		wchar_t tmp[40];
+		FSF.sprintf(tmp, GetMsg(MProcessedFmt), iRen, Count);
+		const wchar_t *MsgItems[]={GetMsg(MVRenTitle), tmp, GetMsg(MOK)};
 		Info.Message( Info.ModuleNumber, 0, 0, MsgItems,
 									sizeof(MsgItems) / sizeof(MsgItems[0]), 1 );
 	}
