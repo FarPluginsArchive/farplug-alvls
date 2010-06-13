@@ -888,6 +888,14 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	{
 		Count=FileList.Count();
 
+		size_t n=FSF.ConvertPath(CPM_NATIVE,strDir.get(),0,0);
+		string strNativeDir;
+		wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
+		FSF.ConvertPath(CPM_NATIVE,strDir.get(),buf2,n);
+		strNativeDir.updsize();
+		FSF.AddEndSlash(buf2);
+		strNativeDir.updsize();
+
 		for (File *Item=FileList.First(); Item != NULL; Item=FileList.Next(Item))
 		{
 			wchar_t *src =Item->strSrcFileName.get(),
@@ -895,14 +903,6 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 
 			// Имена совпадают - пропустим переименование
 			if (!Strncmp(src, dest)) continue;
-
-			size_t n=FSF.ConvertPath(CPM_NATIVE,strDir.get(),0,0);
-			string strNativeDir;
-			wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
-			FSF.ConvertPath(CPM_NATIVE,strDir.get(),buf2,n);
-			strNativeDir.updsize();
-			FSF.AddEndSlash(buf2);
-			strNativeDir.updsize();
 
 			string srcFull=strNativeDir.get();
 			srcFull+=src;
@@ -1007,16 +1007,16 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	{
 		Count=Undo.iCount;
 
+		size_t n=FSF.ConvertPath(CPM_NATIVE,Undo.Dir,0,0);
+		string strNativeDir;
+		wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
+		FSF.ConvertPath(CPM_NATIVE,Undo.Dir,buf2,n);
+		strNativeDir.updsize();
+		FSF.AddEndSlash(buf2);
+		strNativeDir.updsize();
+
 		for (i=Count-1; i>=0; i--)
 		{
-			size_t n=FSF.ConvertPath(CPM_NATIVE,Undo.Dir,0,0);
-			string strNativeDir;
-			wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
-			FSF.ConvertPath(CPM_NATIVE,Undo.Dir,buf2,n);
-			strNativeDir.updsize();
-			FSF.AddEndSlash(buf2);
-			strNativeDir.updsize();
-
 			string srcFull=strNativeDir.get();
 			srcFull+=Undo.CurFileName[i];
 			string destFull=strNativeDir.get();
