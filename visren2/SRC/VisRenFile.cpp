@@ -78,6 +78,21 @@ bool RenFile::InitFileList(int SelectedItemsNumber)
 		else
 			return false;
 	}
+
+	// получим strPanelDir
+	size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
+	wchar_t *buf=strPanelDir.get(size); 
+	Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)buf);
+	strPanelDir.updsize();
+
+	// получим strNativePanelDir - "\\?\dir\"
+	size=FSF.ConvertPath(CPM_NATIVE,strPanelDir.get(),0,0);
+	buf=strNativePanelDir.get(size+1); //+1 для FSF.AddEndSlash()
+	FSF.ConvertPath(CPM_NATIVE,strPanelDir.get(),buf,size);
+	strNativePanelDir.updsize();
+	FSF.AddEndSlash(buf);
+	strNativePanelDir.updsize();
+
 	return true;
 }
 
@@ -136,16 +151,9 @@ bool RenFile::IsEmpty(const wchar_t *Str)
  ****************************************************************************/
 bool RenFile::GetNewNameExt(const wchar_t *src, string &strDest,unsigned ItemIndex, DWORD *dwFlags, SYSTEMTIME ModificTime, bool bProcessName)
 {
-	size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
-	string FullFilename;
-	wchar_t *tmp=FullFilename.get(size+1);  //size+1 для FSF.AddEndSlash()
-	Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)tmp);
-	FullFilename.updsize();
-	FSF.AddEndSlash(tmp);
-	FullFilename.updsize();
-	FullFilename+=src;
-
 	bool bCorrectJPG=false, bCorrectBMP=false, bCorrectGIF=false, bCorrectPNG=false;
+	string FullFilename=strNativePanelDir.get();
+	FullFilename+=src;
 
 	ID3TagInternal *pInternalTag=0;
 	if (Info.CmpName(L"*.mp3", src, true))
@@ -177,7 +185,7 @@ bool RenFile::GetNewNameExt(const wchar_t *src, string &strDest,unsigned ItemInd
 			string Name(src);
 			string Ext;
 			wchar_t *ptr=wcsrchr((const wchar_t *)src,L'.');
-			if (ptr) { Ext=ptr+1; Name(src, (size_t)(ptr-src)); }
+			if (ptr && *(ptr+1)) { Ext=ptr+1; Name(src, (size_t)(ptr-src)); }
 
 			bool bName=!Strncmp(pMask, L"[N", 2);
 			int len=bName?Name.length():Ext.length();
@@ -798,7 +806,7 @@ bool RenFile::ProcessFileName()
 		string NewExt;
 		wchar_t *src=Item->strSrcFileName.get();
 		wchar_t *ptr=wcsrchr(src,L'.');
-		if (ptr)
+		if (ptr && *(ptr+1))
 		{
 			NewExt=ptr+1;
 			NewName(src, (size_t)(ptr-src));
@@ -827,7 +835,7 @@ bool RenFile::ProcessFileName()
 
 		src=NewName.get();
 		ptr=wcsrchr(src,L'.');
-		if (ptr)
+		if (ptr && *(ptr+1))
 		{
 			NewExt=ptr+1;
 			NewName(src, (size_t)(ptr-src));
@@ -865,19 +873,6 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	PanelRedrawInfo RInfo={0,0};
 	SetLastError(ERROR_SUCCESS);
 
-	string strDir;
-	size_t size=Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,0,0);
-	wchar_t *buf=strDir.get(size/*+1+8*/);  //+1 для FSF.AddEndSlash() +8 для "\\?\UNC\"
-	Info.Control(PANEL_ACTIVE,FCTL_GETPANELDIR,size,(LONG_PTR)buf);
-	strDir.updsize();
-
-/* префиксы нельзя передавать в ФАР в текущем ФАР АПИ !!!
-	size=FSF.ConvertPath(CPM_NATIVE,buf,0,0);
-	FSF.ConvertPath(CPM_NATIVE,buf,buf,size);
-	strDir.updsize();
-	FSF.AddEndSlash(buf);
-	strDir.updsize();
-*/
 	Info.Control(PANEL_ACTIVE,FCTL_BEGINSELECTION,0,0);
 
 	// вначале снимем выделение на панели
@@ -888,13 +883,6 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	{
 		Count=FileList.Count();
 
-		size_t n=FSF.ConvertPath(CPM_NATIVE,strDir.get(),0,0);
-		string strNativeDir;
-		wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
-		FSF.ConvertPath(CPM_NATIVE,strDir.get(),buf2,n);
-		strNativeDir.updsize();
-		FSF.AddEndSlash(buf2);
-		strNativeDir.updsize();
 
 		for (File *Item=FileList.First(); Item != NULL; Item=FileList.Next(Item))
 		{
@@ -904,9 +892,9 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 			// Имена совпадают - пропустим переименование
 			if (!Strncmp(src, dest)) continue;
 
-			string srcFull=strNativeDir.get();
+			string srcFull=strNativePanelDir.get();
 			srcFull+=src;
-			string destFull=strNativeDir.get();
+			string destFull=strNativePanelDir.get();
 			destFull+=dest;
 
  RETRY_1:
@@ -1009,10 +997,10 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 
 		size_t n=FSF.ConvertPath(CPM_NATIVE,Undo.Dir,0,0);
 		string strNativeDir;
-		wchar_t *buf2=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
-		FSF.ConvertPath(CPM_NATIVE,Undo.Dir,buf2,n);
+		wchar_t *p=strNativeDir.get(n+1); //+1 для FSF.AddEndSlash()
+		FSF.ConvertPath(CPM_NATIVE,Undo.Dir,p,n);
 		strNativeDir.updsize();
-		FSF.AddEndSlash(buf2);
+		FSF.AddEndSlash(p);
 		strNativeDir.updsize();
 
 		for (i=Count-1; i>=0; i--)
@@ -1089,18 +1077,18 @@ bool RenFile::RenameFile(int SelectedItemsNumber, int ItemsNumber)
 	if (Undo.iCount=iUndo)
 	{
 		// ...запомним тогда и каталог
-		if (!(Undo.Dir=(wchar_t*)realloc(Undo.Dir, (strDir.length()+1)*sizeof(wchar_t))) )
+		if (!(Undo.Dir=(wchar_t*)realloc(Undo.Dir, (strPanelDir.length()+1)*sizeof(wchar_t))) )
 		{
 			FreeUndo();
 			ErrorMsg(MVRenTitle, MErrorCreateLog);
 		}
 		else
-			wcscpy(Undo.Dir, strDir.get());
+			wcscpy(Undo.Dir, strPanelDir.get());
 	}
 
 	if (iRen)
 	{
-		wchar_t tmp[40];
+		wchar_t tmp[80];
 		FSF.sprintf(tmp, GetMsg(MProcessedFmt), iRen, Count);
 		const wchar_t *MsgItems[]={GetMsg(MVRenTitle), tmp, GetMsg(MOK)};
 		Info.Message( Info.ModuleNumber, 0, 0, MsgItems,

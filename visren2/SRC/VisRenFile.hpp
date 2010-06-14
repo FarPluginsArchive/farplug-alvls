@@ -37,6 +37,7 @@ class RenFile
 {
 	public:
 		DList<File> FileList;
+		string strPanelDir, strNativePanelDir;
 		struct StrOptions StrOpt;
 		bool bError;
 
