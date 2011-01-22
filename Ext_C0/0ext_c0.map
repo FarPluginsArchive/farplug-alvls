@@ -1,0 +1,47 @@
+ 0ext_c0
+
+ Timestamp is 4cde21e5 (Sat Nov 13 11:28:05 2010)
+
+ Preferred load address is 10000000
+
+ Start         Length     Name                   Class
+ 0001:00000000 00000018H .idata$5                CODE
+ 0001:00000018 00000014H .rdata                  CODE
+ 0001:0000002c 00000169H .text                   CODE
+ 0001:00000198 00000014H .idata$2                CODE
+ 0001:000001ac 00000014H .idata$3                CODE
+ 0001:000001c0 00000018H .idata$4                CODE
+ 0001:000001d8 00000056H .idata$6                CODE
+ 0001:00000230 000000b6H .edata                  CODE
+ 0002:00000000 0000016cH .bss                    DATA
+ 0003:00000000 00000058H .rsrc$01                DATA
+ 0003:00000060 000002e8H .rsrc$02                DATA
+
+  Address         Publics by Value              Rva+Base       Lib:Object
+
+ 0000:00000000       ___safe_se_handler_table   00000000     <absolute>
+ 0000:00000000       ___safe_se_handler_count   00000000     <absolute>
+ 0001:00000000       __imp__GetProcessHeap@0    10001000     kernel32:KERNEL32.dll
+ 0001:00000004       __imp__HeapFree@12         10001004     kernel32:KERNEL32.dll
+ 0001:00000008       __imp__FindClose@4         10001008     kernel32:KERNEL32.dll
+ 0001:0000000c       __imp__FindFirstFileW@8    1000100c     kernel32:KERNEL32.dll
+ 0001:00000010       __imp__HeapAlloc@12        10001010     kernel32:KERNEL32.dll
+ 0001:00000014       \177KERNEL32_NULL_THUNK_DATA 10001014     kernel32:KERNEL32.dll
+ 0001:00000018       ??_C@_1BA@JECDHBGG@?$AA?$CF?$AA?$CK?$AA?4?$AA?$CK?$AAs?$AA?$CF?$AAc?$AA?$AA@ 10001018     0ext_c0.obj
+ 0001:00000028       ??_C@_13HOIJIPNN@?$AA?5?$AA?$AA@ 10001028     0ext_c0.obj
+ 0001:0000002c       _malloc                    1000102c f   0ext_c0.obj
+ 0001:00000040       _free                      10001040 f   0ext_c0.obj
+ 0001:0000005b       _GetMinFarVersionW@0       1000105b f   0ext_c0.obj
+ 0001:00000061       _SetStartupInfoW@4         10001061 f   0ext_c0.obj
+ 0001:00000094       _GetPluginInfoW@4          10001094 f   0ext_c0.obj
+ 0001:000000a2       ?GetCustomDataW@@YGHPB_WPAPA_W@Z 100010a2 f   0ext_c0.obj
+ 0001:00000181       ?FreeCustomDataW@@YGXPA_W@Z 10001181 f   0ext_c0.obj
+ 0001:00000198       __IMPORT_DESCRIPTOR_KERNEL32 10001198     kernel32:KERNEL32.dll
+ 0001:000001ac       __NULL_IMPORT_DESCRIPTOR   100011ac     kernel32:KERNEL32.dll
+ 0002:00000000       ?Info@@3UPluginStartupInfo@@A 10002000     0ext_c0.obj
+ 0002:00000088       ?FSF@@3UFarStandardFunctions@@A 10002088     0ext_c0.obj
+
+ entry point at        0000:00000000
+
+ Static symbols
+
