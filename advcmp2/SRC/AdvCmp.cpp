@@ -403,7 +403,13 @@ HANDLE WINAPI _export OpenPluginW(int OpenFrom, INT_PTR Item)
 		}
 		if (!LPanel.bARC)
 			LPanel.bARC=LPanel.PInfo.Flags&PFLAGS_USECRC32;
-
+	}
+	else
+	{
+		LList.ItemsNumber=0;
+		LList.PPI=NULL;
+	}
+	{
 		int size=Info.Control(LPanel.hPlugin,FCTL_GETPANELDIR,0,0);
 		if (!LPanel.PInfo.Plugin)
 		{
@@ -455,7 +461,13 @@ HANDLE WINAPI _export OpenPluginW(int OpenFrom, INT_PTR Item)
 		}
 		if (!RPanel.bARC)
 			RPanel.bARC=RPanel.PInfo.Flags&PFLAGS_USECRC32;
-
+	}
+	else
+	{
+		RList.ItemsNumber=0;
+		RList.PPI=NULL;
+	}
+	{
 		int size=Info.Control(RPanel.hPlugin,FCTL_GETPANELDIR,0,0);
 		if (!RPanel.PInfo.Plugin)
 		{
