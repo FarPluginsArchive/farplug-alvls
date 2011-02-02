@@ -101,4 +101,6 @@ enum {
 
 	MOpenErrorTitle,
 	MOpenErrorBody,
+
+	MFolder
 };

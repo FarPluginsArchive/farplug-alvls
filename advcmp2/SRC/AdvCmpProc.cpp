@@ -220,24 +220,7 @@ wchar_t *CutSubstr(string &strSrc, wchar_t *Substr)
 	}
 	return strSrc.get();
 }
-/*
-wchar_t *TrunSubstr(wchar_t *Str, wchar_t *Substr)
-{
-	if (!*Str || !*Substr) return Str;
-	const wchar_t *start1=Str, *start2=Substr;
-	while (*Str++)
-		;
-	Str--;
-	while (*Substr++)
-		;
-	Substr--;
-	while (Str!=start1 && Substr!=start2 && *Str--==*Substr--)
-		;
-	if (Substr==start2)
-		*Str=0;
-	return (wchar_t*)start1;
-}
-*/
+
 /****************************************************************************
  * Преобразует int в wchar_t поразрядно: из 1234567890 в "1 234 567 890"
  ****************************************************************************/
@@ -717,7 +700,7 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 //			DebugMsg(L"Posle Info.GetPluginDirList");
 
 			if (bEqual)
-				bEqual=CompareDirs(&LList,&RList,false /* Opt.Panel */,ScanDepth+1);  // Opt.Panel==1 то всё сравним в подкаталоге
+				bEqual=CompareDirs(&LList,&RList,!Opt.Panel,ScanDepth+1);  // Opt.Panel==0 то всё сравним в подкаталоге, для показа в диалоге
 
 			if (!(LPanel.bARC || RPanel.bARC))
 			{
@@ -904,14 +887,14 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 																		((__int64)pRPPI->FindData.ftLastWriteTime.dwHighDateTime << 32) | pRPPI->FindData.ftLastWriteTime.dwLowDateTime);
 //              wchar_t buf[200];
 //              FSF.sprintf(buf, L"GetCacheResult: L - %X R- %X", dwLFileName, dwRFileName);
-//              DebugMsg(buf,(wchar_t*)pLPPI->FindData.lpwszFileName,Result?(Result==RCIF_INCLUDE?RCIF_INCLUDE:RCIF_EXCLUDE):0);
+//              DebugMsg(buf,(wchar_t*)pLPPI->FindData.lpwszFileName,Result?(Result==RCIF_EQUAL?RCIF_EQUAL:RCIF_DIFFER):0);
 
-					if (Result == RCIF_INCLUDE)
+					if (Result == RCIF_EQUAL)
 					{
 						CmpInfo.ProcSize+=CmpInfo.CurCountSize;
 						return true;
 					}
-					else if (Result == RCIF_EXCLUDE)
+					else if (Result == RCIF_DIFFER)
 					{
 						CmpInfo.ProcSize+=CmpInfo.CurCountSize;
 						return false;
@@ -1104,11 +1087,11 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 								Opt.Cache=SetCacheResult(dwLFileName,dwRFileName,
 																				((__int64)pLPPI->FindData.ftLastWriteTime.dwHighDateTime << 32) | pLPPI->FindData.ftLastWriteTime.dwLowDateTime,
 																				((__int64)pRPPI->FindData.ftLastWriteTime.dwHighDateTime << 32) | pRPPI->FindData.ftLastWriteTime.dwLowDateTime,
-																					bEqual?RCIF_INCLUDE:RCIF_EXCLUDE);
-//              DebugMsg(L"SetCacheResult",(wchar_t*)pLPPI->FindData.lpwszFileName,bEqual?RCIF_INCLUDE:RCIF_EXCLUDE);
+																					bEqual?RCIF_EQUAL:RCIF_DIFFER);
+//              DebugMsg(L"SetCacheResult",(wchar_t*)pLPPI->FindData.lpwszFileName,bEqual?RCIF_EQUAL:RCIF_DIFFER);
 //              wchar_t buf[200];
 //              FSF.sprintf(buf, L"SetCacheResult: L - %X R- %X", dwLFileName, dwRFileName);
-//              DebugMsg(buf,(wchar_t*)pLPPI->FindData.lpwszFileName,bEqual?RCIF_INCLUDE:RCIF_EXCLUDE);
+//              DebugMsg(buf,(wchar_t*)pLPPI->FindData.lpwszFileName,bEqual?RCIF_EQUAL:RCIF_DIFFER);
 
 }
 							break;
@@ -1206,19 +1189,6 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 							while (RPtr < Opt.Buf[1]+RBufPos && myIsSpace(*RPtr))
 								++RPtr;
 						}
-            // наблюдаем баги при сравнении файлов самих с собой, пока грохнем...
-            /*
-            if (PtrA < ABuf+BufPosA && !ReadSizeP)
-            {
-              bEqual = false;
-              break;
-            }
-            if (PtrP < PBuf+BufPosP && !ReadSizeA)
-            {
-              bEqual = false;
-              break;
-            } */
-            // и сделаем так...
 						if (!LReadSize && RReadSize || LReadSize && !RReadSize)
 						{
 							bEqual = false;
@@ -1292,25 +1262,6 @@ int __cdecl PICompare(const void *el1, const void *el2)
 }
 
 /****************************************************************************
- * Функция удаляет начало строки, до нужного слеша
- ****************************************************************************
-
-void AdvCmpProc::SlashTrim(wchar_t *str, int i)
-{
-	string strBuf(str);
-	wchar_t *p=strBuf.get();
-
-	while (*p && i)
-	{
-		if (*p == '\\') i--;
-		p++;
-	}
-	while (*str++ = *p++)
-		;
-}
-*/
-
-/****************************************************************************
  * Функция проверяет, входит ли файл из архива в заданную глубину вложенности
  ****************************************************************************/
 bool AdvCmpProc::CheckScanDepth(const wchar_t *FileName, int ScanDepth)
@@ -1362,20 +1313,14 @@ bool AdvCmpProc::BuildItemsIndex(bool bLeftPanel,const struct DirList *pList,str
 					string srtFileName(pList->PPI[i].FindData.lpwszFileName+4);
 					string strSubstr;
 					wchar_t *p=pList->Dir+4;
-					while (*p++)
+					while (*p++) // для экранирования спецсимволов в регэкспах
 					{
-						if (*p==L'\\')
+						if (*p==L'\\' || *p==L'[' || *p==L']' || *p==L'+' || *p==L'{' || *p==L'}')
 							strSubstr+=L"\\";
 						strSubstr+=*p;
 					}
+					// вырежем pList->Dir из имени файла, т.к. путь до текущей папки (и сама папка) нам не нужен
 					wcscpy((wchar_t*)pList->PPI[i].FindData.lpwszFileName,CutSubstr(srtFileName,strSubstr.get())+2);
-
-//					DebugMsg((wchar_t*)pList->PPI[i].FindData.lpwszFileName,L"Do SlashTrim - ne arc",i);
-
-//					SlashTrim((wchar_t*)pList->PPI[i].FindData.lpwszFileName,1);
-//					DebugMsg((wchar_t*)pList->PPI[i].FindData.lpwszFileName,L"Posle SlashTrim - ne arc",i);
-
-//						DebugMsg(pList->Dir,(wchar_t*)pList->PPI[i].FindData.lpwszFileName,i);
 
 					if (Opt.ProcessSubfolders==2 && !CheckScanDepth(pList->PPI[i].FindData.lpwszFileName, Opt.MaxScanDepth))
 						continue;
@@ -1384,12 +1329,9 @@ bool AdvCmpProc::BuildItemsIndex(bool bLeftPanel,const struct DirList *pList,str
 				// архив + панель || панель + архив (элемент с архива)
 				else if ((LPanel.bARC && !RPanel.bARC && bLeftPanel) || (!LPanel.bARC && RPanel.bARC && !bLeftPanel))
 				{
-//					DebugMsg((wchar_t*)pList->PPI[i].FindData.lpwszFileName,L"Do SlashTrim - arc",i);
 					string srtFileName(pList->PPI[i].FindData.lpwszFileName);
+					// вырежем всё до первого слеша, так как сама папка нам не нужна
 					wcscpy((wchar_t*)pList->PPI[i].FindData.lpwszFileName,CutSubstr(srtFileName,L"^(.*?)\\\\"));
-
-//					SlashTrim((wchar_t*)pList->PPI[i].FindData.lpwszFileName,1);
-//					DebugMsg((wchar_t*)pList->PPI[i].FindData.lpwszFileName,L"Posle SlashTrim - arc",i);
 
 					if (Opt.ProcessSubfolders==2 && !CheckScanDepth(pList->PPI[i].FindData.lpwszFileName, Opt.MaxScanDepth))
 						continue;
@@ -1402,9 +1344,6 @@ bool AdvCmpProc::BuildItemsIndex(bool bLeftPanel,const struct DirList *pList,str
 
 	if (pIndex->iCount=j)
 	{
-		// элементы из подкаталогов архива уже отсортированы...
-//    if (!ScanDepth || !(bAPanelWithCRC && !bPPanelWithCRC))
-			// иначе, отсортируем их...
 			FSF.qsort(pIndex->pPPI,j,sizeof(pIndex->pPPI[0]),PICompare);
 	}
 	else
@@ -1425,6 +1364,38 @@ void AdvCmpProc::FreeItemsIndex(struct ItemsIndex *pIndex)
 		free(pIndex->pPPI);
 	pIndex->pPPI=0;
 	pIndex->iCount=0;
+}
+
+/****************************************************************************
+ * Построение массива элементов, для диалога с результатами сравнения
+ ****************************************************************************/
+bool AdvCmpProc::BuildFileList(const wchar_t *LDir,const PluginPanelItem *pLPPI,const wchar_t *RDir,const PluginPanelItem *pRPPI,DWORD dwFlag)
+{
+	if (pLPPI && pRPPI && (pLPPI->FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) && (pRPPI->FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))
+		return true;
+
+	File add;
+	add.dwFlags=dwFlag;
+	add.strLDir=LDir;
+	add.strRDir=RDir;
+	if (pLPPI)
+	{
+		add.strFileName=pLPPI->FindData.lpwszFileName;
+		add.dwAttributes=pLPPI->FindData.dwFileAttributes;
+		add.ftLLastWriteTime.dwLowDateTime=pLPPI->FindData.ftLastWriteTime.dwLowDateTime;
+		add.ftLLastWriteTime.dwHighDateTime=pLPPI->FindData.ftLastWriteTime.dwHighDateTime;
+		add.nLFileSize=pLPPI->FindData.nFileSize;
+	}
+	if (pRPPI)
+	{
+		if (!add.strFileName.length()) add.strFileName=pRPPI->FindData.lpwszFileName;
+		add.dwAttributes=pRPPI->FindData.dwFileAttributes;
+		add.ftRLastWriteTime.dwLowDateTime=pRPPI->FindData.ftLastWriteTime.dwLowDateTime;
+		add.ftRLastWriteTime.dwHighDateTime=pRPPI->FindData.ftLastWriteTime.dwHighDateTime;
+		add.nRFileSize=pRPPI->FindData.nFileSize;
+	}
+	FileList.Push(&add);
+	return true;
 }
 
 /****************************************************************************
@@ -1449,19 +1420,22 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 			else
 			{
 				string strDir;
-				for (int i=0; !bBrokenByEsc && i<pLList->ItemsNumber && (pLList->PPI[i].Flags&PPIF_SELECTED); i++)
+				for (int i=0; !bBrokenByEsc && i<pLList->ItemsNumber; i++)
 				{
-					if (pLList->PPI[i].FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)
+					if (pLList->PPI[i].Flags&PPIF_SELECTED)
 					{
-						strDir=pLList->Dir;
-						if (strDir.length()>0 && strDir[(size_t)(strDir.length()-1)]!=L'\\') strDir+=L"\\";
-						strDir+=pLList->PPI[i].FindData.lpwszFileName;
-						GetDirList(strDir,ScanDepth,true);
-					}
-					else
-					{
-						CmpInfo.Count+=1;
-						CmpInfo.CountSize+=(unsigned __int64)pLList->PPI[i].FindData.nFileSize;
+						if (pLList->PPI[i].FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)
+						{
+							strDir=pLList->Dir;
+							if (strDir.length()>0 && strDir[(size_t)(strDir.length()-1)]!=L'\\') strDir+=L"\\";
+							strDir+=pLList->PPI[i].FindData.lpwszFileName;
+							GetDirList(strDir,ScanDepth,true);
+						}
+						else
+						{
+							CmpInfo.Count+=1;
+							CmpInfo.CountSize+=(unsigned __int64)pLList->PPI[i].FindData.nFileSize;
+						}
 					}
 				}
 			}
@@ -1477,19 +1451,22 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 			else
 			{
 				string strDir;
-				for (int i=0; !bBrokenByEsc && i<pRList->ItemsNumber && (pRList->PPI[i].Flags&PPIF_SELECTED); i++)
+				for (int i=0; !bBrokenByEsc && i<pRList->ItemsNumber; i++)
 				{
-					if (pRList->PPI[i].FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)
+					if (pRList->PPI[i].Flags&PPIF_SELECTED)
 					{
-						strDir=pRList->Dir;
-						if (strDir.length()>0 && strDir[(size_t)(strDir.length()-1)]!=L'\\') strDir+=L"\\";
-						strDir+=pRList->PPI[i].FindData.lpwszFileName;
-						GetDirList(strDir,ScanDepth,true);
-					}
-					else
-					{
-						CmpInfo.Count+=1;
-						CmpInfo.CountSize+=(unsigned __int64)pRList->PPI[i].FindData.nFileSize;
+						if (pRList->PPI[i].FindData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)
+						{
+							strDir=pRList->Dir;
+							if (strDir.length()>0 && strDir[(size_t)(strDir.length()-1)]!=L'\\') strDir+=L"\\";
+							strDir+=pRList->PPI[i].FindData.lpwszFileName;
+							GetDirList(strDir,ScanDepth,true);
+						}
+						else
+						{
+							CmpInfo.Count+=1;
+							CmpInfo.CountSize+=(unsigned __int64)pRList->PPI[i].FindData.nFileSize;
+						}
 					}
 				}
 			}
@@ -1498,10 +1475,6 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 		if (bBrokenByEsc)
 			return true;
 	}
-
-
-//	DebugMsg(pLList->Dir,L"CompareDirs: left Dir",ScanDepth);
-//	DebugMsg(pRList->Dir,L"CompareDirs: right Dir",ScanDepth);
 
 	// строим индексы элементов, для убыстрения сравнения
 	struct ItemsIndex LII, RII;
@@ -1515,7 +1488,7 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 	}
 
 	// экспресс-сравнение вложенного каталога
-	if (ScanDepth /*&& !Opt.Panel */ && !Opt.IgnoreMissing && LII.iCount!=RII.iCount)
+	if (ScanDepth && Opt.Panel && !Opt.IgnoreMissing && LII.iCount!=RII.iCount)
 		return false;
 
 	int i, j;
@@ -1531,9 +1504,8 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 
 	// начинаем сравнивать "наши" элементы...
 	bool bDifferenceNotFound=true;
-//  FAR_FIND_DATA ffdEmpty;
-//  memset(&ffdEmpty, 0, sizeof(ffdEmpty));
 	i=0; j=0;
+	DWORD dwFlag=0;
 
 	while (i<LII.iCount && j<RII.iCount && (bDifferenceNotFound || bCompareAll) && !bBrokenByEsc)
 	{
@@ -1548,9 +1520,15 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 		}
 
 		bool bNextItem;
+		dwFlag=RCIF_DIFFER;
+
 		switch (PICompare(&LII.pPPI[i], &RII.pPPI[j]))
 		{
+
+			/******************************************************************************/
+
 			case 0: // Имена совпали - проверяем всё остальное
+			{
 //wchar_t buf[512];
 //FSF.sprintf(buf,L"Left: %s Right: %s, %d + %d", LII.pPPI[i]->FindData.lpwszFileName, RII.pPPI[j]->FindData.lpwszFileName, i,j);
 //			 DebugMsg(buf,L"case 0",bDifferenceNotFound);
@@ -1558,31 +1536,38 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 				if (CompareFiles(pLList->Dir,LII.pPPI[i],pRList->Dir,RII.pPPI[j],ScanDepth))
 				{// И остальное совпало
 					i++; j++;
+					dwFlag=RCIF_EQUAL;
 				}
 				else
 				{
 					bDifferenceNotFound=false;
-					if (Opt.SelectedNew)
+					// узнаем, новый кто?
+					if (Opt.SelectedNew || !Opt.Panel)
 					{
-						if ( (((__int64)LII.pPPI[i]->FindData.ftLastWriteTime.dwHighDateTime << 32) | LII.pPPI[i]->FindData.ftLastWriteTime.dwLowDateTime) >
-								(((__int64)RII.pPPI[j]->FindData.ftLastWriteTime.dwHighDateTime << 32) | RII.pPPI[j]->FindData.ftLastWriteTime.dwLowDateTime) )
+						__int64 Delta=(((__int64)LII.pPPI[i]->FindData.ftLastWriteTime.dwHighDateTime << 32) | LII.pPPI[i]->FindData.ftLastWriteTime.dwLowDateTime) -
+													(((__int64)RII.pPPI[j]->FindData.ftLastWriteTime.dwHighDateTime << 32) | RII.pPPI[j]->FindData.ftLastWriteTime.dwLowDateTime);
+
+						if (Delta>0)
 						{
 							LII.pPPI[i]->Flags |= PPIF_SELECTED;
+							dwFlag=RCIF_LNEW;
+						}
+						else if (Delta<0)
+						{
+							RII.pPPI[j]->Flags |= PPIF_SELECTED;
+							dwFlag=RCIF_RNEW;
 						}
 						else
+						{
+							LII.pPPI[i]->Flags |= PPIF_SELECTED;
 							RII.pPPI[j]->Flags |= PPIF_SELECTED;
+						}
 					}
 					else
 					{
 						LII.pPPI[i]->Flags |= PPIF_SELECTED;
 						RII.pPPI[j]->Flags |= PPIF_SELECTED;
 					}
-/*
-            if (Opt.Panel)
-            {     // если нужно создать список отличий
-              Panel->BuildItem(AInfo->CurDir, PInfo->CurDir, &sfiA.ppi[i]->FindData, &sfiP.ppi[j]->FindData);
-            }
-*/
 					i++; j++;
 					CmpInfo.LDiff++; CmpInfo.RDiff++;
 					if (Opt.ProcessTillFirstDiff && !bBrokenByEsc)
@@ -1592,13 +1577,22 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 					}
 				}
 				CmpInfo.Proc+=2;
+				// добавим элемент в диалог результатов
+				if (!Opt.Panel)
+					BuildFileList(pLList->Dir,LII.pPPI[i-1],pRList->Dir,RII.pPPI[j-1],dwFlag);
 				break;
+			}
+
+			/******************************************************************************/
+
 			case -1: // Элемент LII.pPPI[i] не имеет одноимённых в RII.pPPI
+			{
 //wchar_t buf2[512];
 //FSF.sprintf(buf2,L"Left: %s Right: %s", LII.pPPI[i]->FindData.lpwszFileName, RII.pPPI[j]->FindData.lpwszFileName);
 //			 DebugMsg(buf2,L"case -1",bDifferenceNotFound);
 
 				CmpContinueL:
+				dwFlag=RCIF_DIFFER;
 				if (!Opt.IgnoreMissing)
 				{
 					if (!LPanel.bTMP)
@@ -1624,10 +1618,7 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 								{
 									bDifferenceNotFound=false;
 									LII.pPPI[i]->Flags |= PPIF_SELECTED;
-/*
-                    if (Opt.Panel)
-                      Panel->BuildItem(AInfo->CurDir, PInfo->CurDir, &sfiA.ppi[i]->FindData, &ffdEmpty);
-*/
+									dwFlag=RCIF_LNEW;
 									i++; CmpInfo.LDiff++;
 									if (LPanel.bTMP && k<RII.iCount)
 									{
@@ -1655,13 +1646,22 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 					i++;
 				}
 				CmpInfo.Proc++;
+				// добавим элемент в диалог результатов
+				if (!Opt.Panel)
+					BuildFileList(pLList->Dir,LII.pPPI[i-1],pRList->Dir,NULL,dwFlag);
 				break;
+			}
+
+			/******************************************************************************/
+
 			case 1: // Элемент RII.pPPI[j] не имеет одноимённых в LII.pPPI
+			{
 //wchar_t buf3[512];
 //FSF.sprintf(buf3,L"Left: %s Right: %s", LII.pPPI[i]->FindData.lpwszFileName, RII.pPPI[j]->FindData.lpwszFileName);
 //			 DebugMsg(buf3,L"case 1",bDifferenceNotFound);
 
 				CmpContinueR:
+				dwFlag=RCIF_DIFFER;
 				if (!Opt.IgnoreMissing)
 				{
 					if (!RPanel.bTMP)
@@ -1687,10 +1687,7 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 								{
 									bDifferenceNotFound=false;
 									RII.pPPI[j]->Flags |= PPIF_SELECTED;
-/*
-                    if (Opt.Panel)
-                      Panel->BuildItem(AInfo->CurDir, PInfo->CurDir, &ffdEmpty, &sfiP.ppi[j]->FindData);
-*/
+									dwFlag=RCIF_RNEW;
 									j++; CmpInfo.RDiff++;
 									if (RPanel.bTMP && k<LII.iCount)
 									{
@@ -1718,7 +1715,11 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 					j++;
 				}
 				CmpInfo.Proc++;
+				// добавим элемент в диалог результатов
+				if (!Opt.Panel)
+					BuildFileList(pLList->Dir,NULL,pRList->Dir,RII.pPPI[j-1],dwFlag);
 				break;
+			}
 		}
 	}
 
@@ -1743,12 +1744,301 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 //			 DebugMsg(L"LII.iCount",L"",LII.iCount);
 //			 DebugMsg(L"RII.iCount",L"",RII.iCount);
 
-//			 DebugMsg(L"bDifferenceNotFound",L"FreeItemsIndex",bDifferenceNotFound);
-
 	FreeItemsIndex(&LII);
 	FreeItemsIndex(&RII);
 
-//			 DebugMsg(L"bDifferenceNotFound",L"END",bDifferenceNotFound);
-
 	return bDifferenceNotFound;
+}
+
+int GetPosToName(wchar_t *FileName)
+{
+	if (FileName[0]==L'\\' && FileName[1]==L'\\' && FileName[2]==L'?')
+	{
+		if (FileName[5]==L':')
+			return 4;
+		else if (FileName[5]==L'N')
+			return 7;
+	}
+	return 0;
+}
+
+/***************************************************************************
+ * Изменение/обновление листа файлов в диалоге
+ ***************************************************************************/
+bool UpdateFarList(HANDLE hDlg, DList<File> *pFileList, bool bInit=false)
+{
+	// запросим информацию
+	FarListInfo ListInfo;
+	Info.SendDlgMessage(hDlg,DM_LISTINFO,0,(LONG_PTR)&ListInfo);
+
+	if (ListInfo.ItemsNumber)
+		Info.SendDlgMessage(hDlg,DM_LISTDELETE,0,0);
+
+	wchar_t *buf=(wchar_t *)malloc(65536*sizeof(wchar_t));
+
+	for (File *cur=pFileList->First(); cur; cur=pFileList->Next(cur))
+	{
+		// добавим элемент-папку. только при первом построении списка!
+		File *next=pFileList->Next(cur);
+		if (bInit && next && !(next->dwAttributes&FILE_ATTRIBUTE_DIRECTORY) && FSF.LStricmp(cur->strLDir.get(),next->strLDir.get()))
+		{
+			File add;
+			add.strLDir=next->strLDir;
+			add.strRDir=next->strRDir;
+			add.dwAttributes|=FILE_ATTRIBUTE_DIRECTORY;
+			pFileList->InsertBefore(next,&add);
+		}
+
+		wchar_t LTime[18]={0}, RTime[18]={0};
+		SYSTEMTIME ModificTime;
+		FILETIME local;
+		if (cur->ftLLastWriteTime.dwLowDateTime || cur->ftLLastWriteTime.dwHighDateTime)
+		{
+			FileTimeToLocalFileTime(&(cur->ftLLastWriteTime), &local);
+			FileTimeToSystemTime(&local, &ModificTime);
+			FSF.sprintf(LTime, L"%02d.%02d.%02d %02d:%02d:%02d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear%100,ModificTime.wHour,ModificTime.wMinute,ModificTime.wSecond);
+		}
+		if (cur->ftRLastWriteTime.dwLowDateTime || cur->ftRLastWriteTime.dwHighDateTime)
+		{
+			FileTimeToLocalFileTime(&(cur->ftRLastWriteTime), &local);
+			FileTimeToSystemTime(&local, &ModificTime);
+			FSF.sprintf(RTime, L"%02d.%02d.%02d %02d:%02d:%02d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear%100,ModificTime.wHour,ModificTime.wMinute,ModificTime.wSecond);
+		}
+
+		wchar_t LSize[65]={0}, RSize[65]={0};
+		if (!(cur->dwAttributes&FILE_ATTRIBUTE_DIRECTORY))
+		{
+			if (LTime[0]) FSF.itoa64(cur->nLFileSize,LSize,10);
+			if (RTime[0]) FSF.itoa64(cur->nRFileSize,RSize,10);
+		}
+
+		wchar_t Mark;
+		switch (cur->dwFlags)
+		{
+			case RCIF_EQUAL:
+				Mark=L'='; break;
+			case RCIF_DIFFER:
+				Mark=0x2260; break;
+			case RCIF_LNEW:
+				Mark=0x2192; break;
+			case RCIF_RNEW:
+				Mark=0x2190; break;
+			default:
+				Mark=L' '; break;
+		}
+
+		if (cur->dwAttributes&FILE_ATTRIBUTE_DIRECTORY)
+		{
+			int len=WinInfo.Con.Right/2-3;
+			string strTmp1(GetMsg(MFolder));
+			if (LTime[0] || !cur->dwFlags)
+			{
+				strTmp1=cur->strLDir.get()+GetPosToName(cur->strLDir.get());
+				if (strTmp1.length()>0 && strTmp1[(size_t)(strTmp1.length()-1)]!=L'\\') strTmp1+=L"\\";
+				strTmp1+=cur->strFileName;
+				if (strTmp1.length()>0 && strTmp1[(size_t)(strTmp1.length()-1)]!=L'\\') strTmp1+=L"\\";
+				FSF.TruncPathStr(strTmp1.get(),len);
+				strTmp1.updsize();
+			}
+			string strTmp2(GetMsg(MFolder));
+			if (RTime[0] || !cur->dwFlags)
+			{
+				strTmp2=cur->strRDir.get()+GetPosToName(cur->strRDir.get());
+				if (strTmp2.length()>0 && strTmp2[(size_t)(strTmp2.length()-1)]!=L'\\') strTmp2+=L"\\";
+				strTmp2+=cur->strFileName;
+				if (strTmp2.length()>0 && strTmp2[(size_t)(strTmp2.length()-1)]!=L'\\') strTmp2+=L"\\";
+				FSF.TruncPathStr(strTmp2.get(),len);
+				strTmp2.updsize();
+			}
+			FSF.sprintf(buf, L"%-*.*s  %-*.*s",len,len,strTmp1.get(),len,len,strTmp2.get());
+		}
+		else
+			FSF.sprintf(buf, L"%*.*s%c%*.*s%c%*.*s%c%*.*s%c%c%c%s",14,14,LSize,0x2502,17,17,LTime,0x2551,17,17,RTime,0x2502,14,14,RSize,0x2551,Mark,0x2502,cur->strFileName.get());
+
+		struct FarList List;
+		List.ItemsNumber=1;
+		struct FarListItem Item;
+		Item.Flags=0;
+		if (cur->dwAttributes&FILE_ATTRIBUTE_DIRECTORY)
+		{
+			Item.Flags=0x2b; 
+			Item.Flags|=LIF_CHECKED;
+		}
+		else if (cur->dwFlags==RCIF_EQUAL) Item.Flags|=LIF_GRAYED;
+		Item.Text=buf;
+		Item.Reserved[0]=Item.Reserved[1]=Item.Reserved[2]=0;
+		List.Items=&Item;
+		Info.SendDlgMessage(hDlg,DM_LISTADD,0,(LONG_PTR)&List);
+	}
+
+	if (buf) free(buf);
+
+	FarListPos ListPos;
+	ListPos.SelectPos=0/*ListInfo.SelectPos*/;
+	ListPos.TopPos=-1/*ListInfo.TopPos*/;
+	Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,0,(LONG_PTR)&ListPos);
+
+	Info.SendDlgMessage(hDlg,DM_LISTSETMOUSEREACTION,0,(LONG_PTR)LMRT_NEVER);
+	return true;
+}
+
+
+LONG_PTR WINAPI ShowCmpDialogProc(HANDLE hDlg,int Msg,int Param1,LONG_PTR Param2)
+{
+	DList<File> *pFileList=(DList<File> *)Info.SendDlgMessage(hDlg,DM_GETDLGDATA,0,0);
+	switch(Msg)
+	{
+		case DN_INITDIALOG:
+			UpdateFarList(hDlg,pFileList,true);
+			break;
+
+		case DN_RESIZECONSOLE:
+		{
+			COORD c=(*(COORD*)Param2);
+			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
+			Info.SendDlgMessage(hDlg,DM_RESIZEDIALOG,0,(LONG_PTR)&c);
+			WinInfo.Con.Right=c.X-1;
+			WinInfo.Con.Bottom=c.Y-1;
+			Info.SendDlgMessage(hDlg,DM_SETITEMPOSITION,0,(LONG_PTR)&WinInfo.Con);
+			c.X=c.Y=-1;
+			Info.SendDlgMessage(hDlg,DM_MOVEDIALOG,true,(LONG_PTR)&c);
+			Info.SendDlgMessage(hDlg,DM_LISTSETMOUSEREACTION,0,(LONG_PTR)LMRT_NEVER);
+			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
+			return true;
+		}
+
+		case DN_CTLCOLORDLGLIST:
+		{
+			BYTE ColorDlgList[15];
+			BYTE ColorIndex[]=
+			{
+				COL_PANELTEXT,
+				COL_PANELBOX,
+				COL_PANELBOX,
+				COL_PANELTEXT,
+				COL_PANELSELECTEDTEXT,
+				COL_PANELBOX,
+				COL_PANELCURSOR,
+				COL_PANELSELECTEDCURSOR,
+				COL_PANELSCROLLBAR,
+				COL_PANELHIGHLIGHTTEXT,
+				COL_PANELSELECTEDTEXT,
+				COL_PANELSELECTEDCURSOR,
+				COL_PANELSELECTEDTEXT,
+				COL_PANELHIGHLIGHTTEXT,
+				COL_PANELCURSOR
+			};
+			for (int i=0; i<sizeof(ColorDlgList); i++)
+				ColorDlgList[i]=Info.AdvControl(Info.ModuleNumber,ACTL_GETCOLOR,(void *)ColorIndex[i]);
+
+			FarListColors *flc=(FarListColors *)Param2;
+			flc->Flags=flc->Reserved=0;
+			flc->ColorCount=sizeof(ColorDlgList);
+			flc->Colors=ColorDlgList;
+			return true;
+		}
+
+		case DN_MOUSECLICK:
+		{
+			if (Param1==0 &&
+							((MOUSE_EVENT_RECORD *)Param2)->dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+							((MOUSE_EVENT_RECORD *)Param2)->dwEventFlags==DOUBLE_CLICK )
+				goto GOTOFILE;
+			return false;
+		}
+
+		case DN_KEY:
+		{
+			if (Param2==KEY_ENTER || Param2==KEY_NUMENTER)
+			{
+GOTOFILE:
+				int Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,0,0);
+				File *cur=NULL; unsigned index;
+				for (cur=pFileList->First(), index=0; cur && index<Pos; cur=pFileList->Next(cur), index++)
+					;
+				if (cur)
+				{
+					if ((cur->dwAttributes&FILE_ATTRIBUTE_DIRECTORY) ||
+							!(cur->ftLLastWriteTime.dwLowDateTime || cur->ftLLastWriteTime.dwHighDateTime) ||
+							!(cur->ftRLastWriteTime.dwLowDateTime || cur->ftRLastWriteTime.dwHighDateTime))
+						MessageBeep(MB_OK);
+					else if (pCompareFiles)
+					{
+						string strLFullFileName=cur->strLDir.get();
+						if (strLFullFileName.length()>0 && strLFullFileName[(size_t)(strLFullFileName.length()-1)]!=L'\\') strLFullFileName+=L"\\";
+						strLFullFileName+=cur->strFileName;
+						string strRFullFileName=cur->strRDir.get();
+						if (strRFullFileName.length()>0 && strRFullFileName[(size_t)(strRFullFileName.length()-1)]!=L'\\') strRFullFileName+=L"\\";
+						strRFullFileName+=cur->strFileName;
+						pCompareFiles(strLFullFileName.get(),strRFullFileName.get(),0);
+					}
+				}
+				return true;
+			}
+		}
+
+	}
+	return Info.DefDlgProc(hDlg,Msg,Param1,Param2);
+}
+
+
+int AdvCmpProc::ShowCmpDialog(const struct DirList *pLList,const struct DirList *pRList)
+{
+	FarDialogItem DialogItems[1];
+	memset(DialogItems,0,sizeof(DialogItems));
+
+	DialogItems[0].Type=DI_LISTBOX;
+	DialogItems[0].X1=0; DialogItems[0].X2=WinInfo.Con.Right;
+	DialogItems[0].Y1=0; DialogItems[0].Y2=WinInfo.Con.Bottom-WinInfo.Con.Top;
+	DialogItems[0].Flags=DIF_LISTNOCLOSE;
+
+	int len=WinInfo.Con.Right/2-2;
+
+	int size=Info.Control(LPanel.hPlugin,FCTL_GETPANELHOSTFILE,0,0);
+	string strTmp;
+	if (size>1)
+	{
+		strTmp.get(size);
+		Info.Control(LPanel.hPlugin,FCTL_GETPANELHOSTFILE,size,(LONG_PTR)strTmp.get());
+	}
+	else
+		strTmp=pLList->Dir+GetPosToName(pLList->Dir);
+	FSF.TruncPathStr(strTmp.get(),len-2);
+	strTmp.updsize();
+	string strTmp2=L" ";
+	strTmp2+=strTmp+L" ";
+	wchar_t buf1[MAX_PATH];
+	strcentr(buf1,strTmp2.get(),len,0x00002550);
+
+	size=Info.Control(RPanel.hPlugin,FCTL_GETPANELHOSTFILE,0,0);
+	if (size>1)
+	{
+		strTmp.get(size);
+		Info.Control(RPanel.hPlugin,FCTL_GETPANELHOSTFILE,size,(LONG_PTR)strTmp.get());
+	}
+	else
+		strTmp=pRList->Dir+GetPosToName(pRList->Dir);
+	FSF.TruncPathStr(strTmp.get(),len-2);
+	strTmp.updsize();
+	strTmp2=L" ";
+	strTmp2+=strTmp+L" ";
+	wchar_t buf2[MAX_PATH];
+	strcentr(buf2,strTmp2.get(),len,0x00002550);
+
+	wchar_t *buf=(wchar_t*)malloc(WinInfo.Con.Right*sizeof(wchar_t));
+	if (buf)
+	{
+		FSF.sprintf(buf, L"%s %s",buf1,buf2);
+		DialogItems[0].PtrData=buf;
+	}
+
+	HANDLE hDlg=Info.DialogInit(Info.ModuleNumber,0,0,WinInfo.Con.Right,WinInfo.Con.Bottom-WinInfo.Con.Top,L"Contents",DialogItems,
+															sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_KEEPCONSOLETITLE,ShowCmpDialogProc,(LONG_PTR)&FileList);
+	if (hDlg != INVALID_HANDLE_VALUE)
+	{
+		Info.DialogRun(hDlg);
+		Info.DialogFree(hDlg);
+	}
+	if (buf) free(buf);
+	return 1;
 }

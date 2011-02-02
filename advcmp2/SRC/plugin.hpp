@@ -5,7 +5,7 @@
 /*
   plugin.hpp
 
-  Plugin API for FAR Manager 2.0 build 1793
+  Plugin API for FAR Manager 2.0 build 1805
 */
 
 /*
@@ -42,7 +42,7 @@ other possible license with no implications from the above license on them.
 
 #define FARMANAGERVERSION_MAJOR 2
 #define FARMANAGERVERSION_MINOR 0
-#define FARMANAGERVERSION_BUILD 1793
+#define FARMANAGERVERSION_BUILD 1805
 
 #ifndef RC_INVOKED
 
@@ -574,6 +574,7 @@ enum FARDIALOGFLAGS
 	FDLG_SMALLDIALOG         = 0x00000002,
 	FDLG_NODRAWSHADOW        = 0x00000004,
 	FDLG_NODRAWPANEL         = 0x00000008,
+	FDLG_KEEPCONSOLETITLE    = 0x00000020,
 };
 
 typedef LONG_PTR(WINAPI *FARWINDOWPROC)(
@@ -1136,6 +1137,7 @@ struct ActlKeyMacro
 		{
 			const wchar_t *SequenceText;
 			DWORD Flags;
+			DWORD AKey;
 		} PlainText;
 		struct MacroParseResult MacroResult;
 		DWORD_PTR Reserved[3];
@@ -1896,6 +1898,7 @@ enum OPENPLUGININFO_SORTMODES
 	SM_NUMSTREAMS,
 	SM_STREAMSSIZE,
 	SM_FULLNAME,
+	SM_CHTIME,
 };
 
 
@@ -1947,17 +1950,23 @@ struct OpenPluginInfo
 
 enum OPENPLUGIN_OPENFROM
 {
-	OPEN_DISKMENU     = 0,
-	OPEN_PLUGINSMENU  = 1,
-	OPEN_FINDLIST     = 2,
-	OPEN_SHORTCUT     = 3,
-	OPEN_COMMANDLINE  = 4,
-	OPEN_EDITOR       = 5,
-	OPEN_VIEWER       = 6,
-	OPEN_FILEPANEL    = 7,
-	OPEN_DIALOG       = 8,
-	OPEN_ANALYSE      = 9,
-	OPEN_FROMMACRO    = 0x10000,
+	OPEN_FROM_MASK          = 0x000000FF,
+
+	OPEN_DISKMENU           = 0,
+	OPEN_PLUGINSMENU        = 1,
+	OPEN_FINDLIST           = 2,
+	OPEN_SHORTCUT           = 3,
+	OPEN_COMMANDLINE        = 4,
+	OPEN_EDITOR             = 5,
+	OPEN_VIEWER             = 6,
+	OPEN_FILEPANEL          = 7,
+	OPEN_DIALOG             = 8,
+	OPEN_ANALYSE            = 9,
+
+	OPEN_FROMMACRO_MASK     = 0x000F0000,
+
+	OPEN_FROMMACRO          = 0x00010000,
+	OPEN_FROMMACROSTRING    = 0x00020000,
 };
 
 enum FAR_PKF_FLAGS

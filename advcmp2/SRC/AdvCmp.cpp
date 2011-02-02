@@ -285,7 +285,7 @@ bool LoadGfl(wchar_t *PlugPath)
  * Эти функции плагина FAR вызывает в первую очередь
  ****************************************************************************/
 // установим минимально поддерживаемую версию FARа...
-int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1789); }
+int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1805); }
 
 // заполним структуру PluginStartupInfo и сделаем ряд полезных действий...
 void WINAPI _export SetStartupInfoW(const struct PluginStartupInfo *Info)
@@ -498,9 +498,10 @@ HANDLE WINAPI _export OpenPluginW(int OpenFrom, INT_PTR Item)
 
 	if (ret==35) // DlgOK
 	{
+		DWORD dwTicks=GetTickCount();
+
 		Info.Control(LPanel.hPlugin,FCTL_BEGINSELECTION,0,0);
 		Info.Control(RPanel.hPlugin,FCTL_BEGINSELECTION,0,0);
-		DWORD dwTicks=GetTickCount();
 
 		class AdvCmpProc AdvCmp;
 		bool bDifferenceNotFound=AdvCmp.CompareDirs(&LList,&RList,true,0);
@@ -509,9 +510,9 @@ HANDLE WINAPI _export OpenPluginW(int OpenFrom, INT_PTR Item)
 		if (!bBrokenByEsc)
 		{
 			for (int i=0; i<LList.ItemsNumber; i++)
-				Info.Control(LPanel.hPlugin,FCTL_SETSELECTION,i,LList.PPI[i].Flags&PPIF_SELECTED);
+				Info.Control(LPanel.hPlugin,FCTL_SETSELECTION,i,Opt.Panel?(LList.PPI[i].Flags&PPIF_SELECTED):0);
 			for (int i=0; i<RList.ItemsNumber; i++)
-				Info.Control(RPanel.hPlugin,FCTL_SETSELECTION,i,RList.PPI[i].Flags&PPIF_SELECTED);
+				Info.Control(RPanel.hPlugin,FCTL_SETSELECTION,i,Opt.Panel?(RList.PPI[i].Flags&PPIF_SELECTED):0);
 
 			Info.Control(LPanel.hPlugin,FCTL_ENDSELECTION,0,0);
 			Info.Control(LPanel.hPlugin,FCTL_REDRAWPANEL,0,0);
@@ -520,12 +521,14 @@ HANDLE WINAPI _export OpenPluginW(int OpenFrom, INT_PTR Item)
 
 			if (Opt.Sound && (GetTickCount()-dwTicks > 30000)) MessageBeep(MB_ICONASTERISK);
 			Info.AdvControl(Info.ModuleNumber,ACTL_PROGRESSNOTIFY,0);
-			if (bOpenFail) ErrorMsg(MOpenErrorTitle,MOpenErrorBody);
+//			if (bOpenFail) ErrorMsg(MOpenErrorTitle,MOpenErrorBody);
 			if (bDifferenceNotFound && Opt.ShowMsg)
 			{
 				const wchar_t *MsgItems[] = { GetMsg(MNoDiffTitle), GetMsg(MNoDiffBody), GetMsg(MOK) };
 				Info.Message(Info.ModuleNumber,0,0,MsgItems,sizeof(MsgItems) / sizeof(MsgItems[0]),1);
 			}
+			else if (!bDifferenceNotFound && !Opt.Panel)
+				AdvCmp.ShowCmpDialog(&LList,&RList);
 		}
 	}
 	else if (ret==36) // DlgUNDERCURSOR

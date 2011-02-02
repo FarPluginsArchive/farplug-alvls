@@ -141,14 +141,66 @@ struct DirList {
 	int ItemsNumber;        // кол-во
 };
 
+// флаги результата сравнения
+enum ResultCmpItemFlag {
+	RCIF_EQUAL  = 0x1,      // одинаковые   |=|
+	RCIF_DIFFER = 0x2,      // разные       |?|
+
+	RCIF_LNEW = 0x6,        // слева новый  |>|
+	RCIF_RNEW = 0xA,        // справа новый |<|
+};
+
+// элемент для показа в диалоге результатов
+struct File
+{
+	string strFileName;
+	string strLDir;
+	string strRDir;
+	DWORD dwAttributes;
+	unsigned __int64 nLFileSize;
+	unsigned __int64 nRFileSize;
+	FILETIME ftLLastWriteTime;
+	FILETIME ftRLastWriteTime;
+	DWORD dwFlags;
+
+	File()
+	{
+		strFileName.clear();
+		strLDir.clear();
+		strRDir.clear();
+		dwAttributes=0;
+		nLFileSize=0;
+		nRFileSize=0;
+		ftLLastWriteTime.dwLowDateTime=0;
+		ftLLastWriteTime.dwHighDateTime=0;
+		ftRLastWriteTime.dwLowDateTime=0;
+		ftRLastWriteTime.dwHighDateTime=0;
+		dwFlags=0;
+	}
+
+	const File& operator=(const File &f)
+	{
+		if (this != &f)
+		{
+			strFileName=f.strFileName;
+			strLDir=f.strLDir;
+			strRDir=f.strRDir;
+			dwAttributes=f.dwAttributes;
+			nLFileSize=f.nLFileSize;
+			nRFileSize=f.nRFileSize;
+			ftLLastWriteTime.dwLowDateTime=f.ftLLastWriteTime.dwLowDateTime;
+			ftLLastWriteTime.dwHighDateTime=f.ftLLastWriteTime.dwHighDateTime;
+			ftRLastWriteTime.dwLowDateTime=f.ftRLastWriteTime.dwLowDateTime;
+			ftRLastWriteTime.dwHighDateTime=f.ftRLastWriteTime.dwHighDateTime;
+			dwFlags=f.dwFlags;
+		}
+		return *this;
+	}
+};
+
 /****************************************************************************
  * Кеш сравнения "по содержимому"
  ****************************************************************************/
-enum ResultCmpItemFlag {
-	RCIF_EXCLUDE =1,
-	RCIF_INCLUDE =2
-};
-
 // результат сравнения 2-х элементов
 struct ResultCmpItem {
 	DWORD   dwFullFileName[2];

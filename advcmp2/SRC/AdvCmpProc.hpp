@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #pragma once
+#include "DList.hpp"
 #include "AdvCmp.hpp"
 
 // сама сравнивалка :)
@@ -47,6 +48,9 @@ class AdvCmpProc
 			PluginPanelItem **pPPI; // элементы
 			int iCount;             // кол-во
 		};
+
+		// массив элементов, для диалога с результатами сравнения
+		DList<File> FileList;
 
 	private:
 		bool CheckForEsc(void);
@@ -72,14 +76,15 @@ class AdvCmpProc
 		bool SetCacheResult(DWORD FullFileName1, DWORD FullFileName2, DWORD64 WriteTime1, DWORD64 WriteTime2, DWORD dwFlag);
 		bool CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI, const wchar_t *RDir, const PluginPanelItem *pRPPI, int ScanDepth);
 
-//		void SlashTrim(wchar_t *str, int i);
 		bool CheckScanDepth(const wchar_t *FileName, int ScanDepth);
 		bool BuildItemsIndex(bool bLeftPanel,const struct DirList *pList,struct ItemsIndex *pIndex,int ScanDepth);
 		void FreeItemsIndex(struct ItemsIndex *pIndex);
+		bool BuildFileList(const wchar_t *LDir,const PluginPanelItem *pLPPI,const wchar_t *RDir,const PluginPanelItem *pRPPI,DWORD dwFlag);
 
 	public:
 		AdvCmpProc();
 		~AdvCmpProc();
 
 		bool CompareDirs(const struct DirList *pLList,const struct DirList *pRList,bool bCompareAll,int ScanDepth);
+		int ShowCmpDialog(const struct DirList *pLList,const struct DirList *pRList);
 };
