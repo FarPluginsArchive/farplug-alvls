@@ -1,0 +1,70 @@
+PicView Simple: History
+-----------------------
+
+Legend:  + added
+         - removed
+         * changed
+         ! fixed
+
+version 3.0 build 8 (19/02/2011)
+----------------------
+! Портирован на Far 3.0.1882
++ Обновлена библиотека GFL - libgfl340.dll
+
+version 2.0 build 7 (04/11/2010)
+----------------------
++ Опция "Ignore read error".
+
+version 2.0 build 6 (30/10/2010)
+----------------------
+* При удалении картинок в режиме QuickView наблюдались артефакты.
++ GUID основного диалога: {66ffe4cf-ee00-4b45-b91a-163f7c57d084}
++ Поддержка поворота картинки: Ctrl-S/Ctrl-D/Ctrl-E.
++ Удаление картинок в режиме QuickView по клавише Del.
+
+version 2.0 build 5 (26/10/2010)
+----------------------
++ Опция "Bilinear resize in Viewer".
++ Опция "Bilinear resize in QuickView".
++ Показываем в строке информации текущее разрешение картинки.
+
+version 2.0 build 4 (25/10/2010)
+----------------------
+! Рекомендуется устанавливать плагин на ФАР 2.0 билд 1700 и выше - 
+  поправлен баг в Вьювер-АПИ влияющий на работу плагина, но
+  можно остаться и на билде 1666 :-)
+* При выходе из вьювера становимся на посмотренный файл.
+* Пытаемся корректно работать в режиме "far.exe /w"
+
+version 2.0 build 3 (24/10/2010)
+----------------------
+* Версия уникодная, для ФАРа 2.0 билд 1666 и выше.
++ Позволяет смотреть рисунки из специфических папок 
+  (например, оканчивающимися точкой ;-) )
+
+version 1.2 (28/06/05)
+----------------------
+ ! Plugin could cause crashes in Find File (Alt-F7)  if  used  with
+   The Underscore. You will need now Far Manager 1.70 build 1975 or
+   newer for the plugin to work!
+ * Initial cursor position inside the info text is  now  always  at
+   the beginning so you even if the text doesn't feet to the screen
+   you will see the size of the picture in pixels.
+
+version 1.1 (2/02/05)
+---------------------
+ + Config: "Automatic in QuickView". Suggested by Anatoly Techtonik
+   at tut.by / tip.
+ + Plugin can now load GFL plugins,  just  put  them  in  the  same
+   folder  as  the  plugin  itself.  Suggested  by  Dmitry   Kozlov
+   at gmail.com / dima.kozlov.
+ * The picture is now centered in the QuickView panel. Suggested by
+   Dmitry Kozlov at gmail.com / dima.kozlov.
+ ! Manual viewing was not working when auto viewing was off.
+ ! Pressing F3 when viewing in the viewer did not close the viewer.
+   Noticed by Anatoly Techtonik at tut.by / tip.
+ * Readme updated.
+
+version 1.0 (21/01/05)
+----------------------
+ + First public release.
