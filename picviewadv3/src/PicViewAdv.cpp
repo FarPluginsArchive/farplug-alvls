@@ -304,7 +304,7 @@ void UpdateInfoText(HANDLE hDlg, DialogData *data)
   Info.SendDlgMessage(hDlg,DM_SETCURSORPOS,2,(INT_PTR)&coord);
 }
 
-INT_PTR WINAPI PicDialogProc(HANDLE hDlg,FARMESSAGE Msg,int Param1,INT_PTR Param2)
+INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,INT_PTR Param2)
 {
   DialogData *DlgParams=(DialogData *)Info.SendDlgMessage(hDlg,DM_GETDLGDATA,0,0);
 
@@ -554,7 +554,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
             VirtualBuffer[i].Attributes=color;
           }
 
-          HANDLE hDlg=Info.DialogInit(&MainGuid,&DlgGuid,ViewerRect.left,ViewerRect.top,ViewerRect.right,ViewerRect.bottom,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_NODRAWSHADOW,PicDialogProc,(LONG_PTR)&data);
+          HANDLE hDlg=Info.DialogInit(&MainGuid,&DlgGuid,ViewerRect.left,ViewerRect.top,ViewerRect.right,ViewerRect.bottom,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_NODRAWSHADOW,PicDialogProc,(INT_PTR)&data);
           if (hDlg != INVALID_HANDLE_VALUE)
           {
             Info.DialogRun(hDlg);
@@ -633,7 +633,7 @@ int WINAPI ProcessViewerEventW(int Event,void *Param)
   return 0;
 }
 
-HANDLE WINAPI OpenPluginW(int OpenFrom,const GUID* Guid,INT_PTR Data)
+HANDLE WINAPI OpenPluginW(OPENPLUGIN_OPENFROM OpenFrom,const GUID* Guid,INT_PTR Data)
 {
   GetJiggyWithIt(PANEL_ACTIVE,true,true);
   return INVALID_HANDLE_VALUE;
