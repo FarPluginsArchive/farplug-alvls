@@ -434,11 +434,11 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,INT_PTR Param2)
 void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 {
   ViewerInfo info;
-  info.StructSize=sizeof(info);
+  info.StructSize=sizeof(ViewerInfo);
   if(Info.ViewerControl(-1,VCTL_GETINFO,0,(INT_PTR)&info))
   {
     DialogData data;
-    PanelInfo PInfo;
+    PanelInfo PInfo; PInfo.StructSize=sizeof(PanelInfo);
     Info.Control(XPanelInfo,FCTL_GETPANELINFO,0,(INT_PTR)&PInfo);
 
     if(info.WindowSizeX==(PInfo.PanelRect.right-PInfo.PanelRect.left-1)&&PInfo.PanelType==PTYPE_QVIEWPANEL)
@@ -617,13 +617,13 @@ int WINAPI ProcessViewerEventW(int Event,void *Param)
   if(Event==VE_READ)
   {
     HANDLE XPanelInfo=PANEL_PASSIVE;
-    struct WindowType wi;
+    struct WindowType wi; wi.StructSize=sizeof(WindowType);
     if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,(void *)&wi) && wi.Type==WTYPE_PANELS)
     {
       Info.Control(PANEL_PASSIVE,FCTL_REDRAWPANEL,0,0);
       Info.Control(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
 
-      struct PanelInfo pi;
+      struct PanelInfo pi; pi.StructSize=sizeof(PanelInfo);
       Info.Control(PANEL_ACTIVE,FCTL_GETPANELINFO,0,(LONG_PTR)&pi);
       if (pi.PanelType==PTYPE_QVIEWPANEL)
         XPanelInfo=PANEL_ACTIVE;
@@ -633,7 +633,7 @@ int WINAPI ProcessViewerEventW(int Event,void *Param)
   return 0;
 }
 
-HANDLE WINAPI OpenPluginW(OPENPLUGIN_OPENFROM OpenFrom,const GUID* Guid,INT_PTR Data)
+HANDLE WINAPI OpenPanelW(OPENPANEL_OPENFROM OpenFrom,const GUID* Guid,INT_PTR Data)
 {
   GetJiggyWithIt(PANEL_ACTIVE,true,true);
   return INVALID_HANDLE_VALUE;
@@ -653,7 +653,7 @@ void WINAPI GetGlobalInfoW(struct GlobalInfo *Info)
 void WINAPI SetStartupInfoW(const struct PluginStartupInfo *Info)
 {
   ::Info=*Info;
-  if (Info->StructSize >= (int)sizeof(struct PluginStartupInfo))
+  if (Info->StructSize >= sizeof(PluginStartupInfo))
   {
     FSF = *Info->FSF;
     ::Info.FSF = &FSF;
@@ -696,7 +696,7 @@ void WINAPI GetPluginInfoW(struct PluginInfo *Info)
   static const wchar_t *MenuStrings[1];
   MenuStrings[0]=GetMsg(MTitle);
 
-  Info->StructSize=sizeof(*Info);
+  Info->StructSize=sizeof(PluginInfo);
   Info->Flags=PF_DISABLEPANELS|PF_VIEWER;
   Info->PluginConfig.Guids=&MenuGuid;
   Info->PluginConfig.Strings=MenuStrings;
