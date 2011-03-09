@@ -633,7 +633,7 @@ int WINAPI ProcessViewerEventW(int Event,void *Param)
   return 0;
 }
 
-HANDLE WINAPI OpenPanelW(OPENPANEL_OPENFROM OpenFrom,const GUID* Guid,INT_PTR Data)
+HANDLE WINAPI OpenW(const struct OpenInfo *OInfo)
 {
   GetJiggyWithIt(PANEL_ACTIVE,true,true);
   return INVALID_HANDLE_VALUE;
