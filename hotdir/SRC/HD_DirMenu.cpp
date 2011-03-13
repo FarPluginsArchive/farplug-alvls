@@ -374,7 +374,7 @@ LONG_PTR TDirMenu::KeyPress(LONG_PTR Key, int Pos)
           Shortcut[Pos]=Shortcut[Pos+1];
           Pos++;
         } while(Pos<Count);
-        free(&Shortcut[Count]);
+        Shortcut = (struct FolderShortcuts *) realloc(Shortcut, (Count-1)*sizeof(*Shortcut));
       }
       break;
     //-------------------
@@ -398,7 +398,7 @@ LONG_PTR TDirMenu::KeyPress(LONG_PTR Key, int Pos)
           Shortcut[Pos-1]=Shortcut[Pos];
           Pos++;
         } while(Pos<=Count);
-        free(&Shortcut[Count]);
+        Shortcut = (struct FolderShortcuts *) realloc(Shortcut, (Count-1)*sizeof(*Shortcut));
       }
       break;
     //-------------------

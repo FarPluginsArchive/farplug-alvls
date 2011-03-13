@@ -9,15 +9,15 @@
 
 /* Current developer: samlyukov<at>gmail.com  */
 
-/* $ Revision: 07.1 $ */
+/* $ Revision: 08.1 $ */
 
 //#define _FAR_NO_NAMELESS_UNIONS
 #define _FAR_USE_FARFINDDATA
 #define COUNT(Msg) (sizeof(Msg)/sizeof(*Msg))
 
-#include "..\..\plugin.hpp"
-#include "..\..\farkeys.hpp"
-#include "..\..\farcolor.hpp"
+#include "plugin.hpp"
+#include "farkeys.hpp"
+#include "farcolor.hpp"
 
 static struct PluginStartupInfo Info;
 static struct FarStandardFunctions FSF;
@@ -147,7 +147,7 @@ static int DebugMsg(char *msg, char *msg2 = " ", int i = 1000)
  ***************************** Exported functions ***************************
  ****************************************************************************/
 
-int WINAPI _export GetMinFarVersion(void) { return MAKEFARVERSION(1,71,2232); }
+int WINAPI _export GetMinFarVersion(void) { return MAKEFARVERSION(1,75,2634); }
 
 void WINAPI _export SetStartupInfo(const struct PluginStartupInfo *Info)
 {

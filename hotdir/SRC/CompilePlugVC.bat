@@ -7,8 +7,8 @@ rem =============== Use Microsoft Visual Studio .NET 2003 ======================
 rem  ======================== Set name and version ... =========================
 
 @set PlugName=HotDir
-@set fileversion=1,71,0,7
-@set fileversion_str=1.71 build 7
+@set fileversion=1,75,0,8
+@set fileversion_str=1.75 build 8
 @set MyDir=%CD%
 @set MyFarDir=C:\Program Files\Far
 @set MyReleaseDir=%MyFarDir%\Plugins\%PlugName%
@@ -29,27 +29,6 @@ echo Make %PlugName%.def file...
 @echo   GetPluginInfo                                      >> %PlugName%.def
 @echo   OpenPlugin                                         >> %PlugName%.def
 @echo   GetMinFarVersion                                   >> %PlugName%.def
-rem @echo   ExitFAR                                            >> %PlugName%.def
-rem @echo   OpenFilePlugin                                     >> %PlugName%.def
-rem @echo   SetFindList                                        >> %PlugName%.def
-rem @echo   ProcessEditorInput                                 >> %PlugName%.def
-rem @echo   ProcessEditorEvent                                 >> %PlugName%.def
-rem @echo   ProcessViewerEvent                                 >> %PlugName%.def
-rem @echo   ClosePlugin                                        >> %PlugName%.def
-rem @echo   GetOpenPluginInfo                                  >> %PlugName%.def
-rem @echo   GetFindData                                        >> %PlugName%.def
-rem @echo   FreeFindData                                       >> %PlugName%.def
-rem @echo   FreeVirtualFindData                                >> %PlugName%.def
-rem @echo   SetDirectory                                       >> %PlugName%.def
-rem @echo   GetFiles                                           >> %PlugName%.def
-rem @echo   PutFiles                                           >> %PlugName%.def
-rem @echo   DeleteFiles                                        >> %PlugName%.def
-rem @echo   MakeDirectory                                      >> %PlugName%.def
-rem @echo   ProcessHostFile                                    >> %PlugName%.def
-rem @echo   Configure                                          >> %PlugName%.def
-rem @echo   ProcessKey                                         >> %PlugName%.def
-rem @echo   ProcessEvent                                       >> %PlugName%.def
-rem @echo   Compare                                            >> %PlugName%.def
 
 @if exist %PlugName%.def echo ... successfully
 )
@@ -63,7 +42,7 @@ echo Make %PlugName%.rc file...
 @echo.                                                          >> %PlugName%.rc
 @echo VERSIONINFO_1  VERSIONINFO                                >> %PlugName%.rc
 @echo FILEVERSION    %fileversion%                              >> %PlugName%.rc
-@echo PRODUCTVERSION 1,71,0,0                                   >> %PlugName%.rc
+@echo PRODUCTVERSION 1,75,0,0                                   >> %PlugName%.rc
 @echo FILEFLAGSMASK  0x0                                        >> %PlugName%.rc
 @echo FILEFLAGS      0x0                                        >> %PlugName%.rc
 @echo FILEOS         0x4                                        >> %PlugName%.rc
@@ -81,7 +60,7 @@ echo Make %PlugName%.rc file...
 @echo       VALUE "LegalCopyright",   "%legalcopyright%\0"      >> %PlugName%.rc
 @echo       VALUE "OriginalFilename", "%PlugName%.dll\0"        >> %PlugName%.rc
 @echo       VALUE "ProductName",      "FAR Manager\0"           >> %PlugName%.rc
-@echo       VALUE "ProductVersion",   "1.71\0"                  >> %PlugName%.rc
+@echo       VALUE "ProductVersion",   "1.75\0"                  >> %PlugName%.rc
 @echo       VALUE "Comments",         "%comments%\0"            >> %PlugName%.rc
 @echo     }                                                     >> %PlugName%.rc
 @echo   }                                                       >> %PlugName%.rc
@@ -97,7 +76,6 @@ echo Make %PlugName%.rc file...
 rem  ==================== Compile %PlugName%.dll file...========================
 
 @cd ".."
-@if exist %PlugName%.dll "%MyFarDir%\The Underscore\loader\LOADER.EXE" /u %PlugName%.dll
 @if exist %PlugName%.dll del %PlugName%.dll>nul
 
 @cd %MyDir%
@@ -109,12 +87,5 @@ rem  ==================== Compile %PlugName%.dll file...========================
 @if exist *.res del *.res>nul
 @if exist *.def del *.def>nul
 @if exist *.rc  del *.rc>nul
-
-
-rem  ================= Load work %PlugName%.dll file... ========================
-
-@cd %MyDir%
-@cd ".."
-@if exist %PlugName%.dll  "%MyFarDir%\The Underscore\loader\LOADER.EXE" /l %PlugName%.dll
 
 echo ***************

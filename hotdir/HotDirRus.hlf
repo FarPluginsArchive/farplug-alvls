@@ -2,7 +2,10 @@
 .PluginContents=HotDir
 
 @Contents
-$^#HotDir - Расширенные ссылки на папки#
+$^ #HotDir - Расширенные ссылки на папки#
+$^ #1.75 build 8#
+$^ #Copyright (C) Alexander Arefiev 2003, Copyright (C) 2007 Alexey Samlyukov#
+
     Плагин #HotDir# (Расширенные ссылки на папки) позволяют обеспечить быстрый
 доступ к часто используемым папкам. Аналогичен встроенной команде FAR
 "~Ссылки на папки~@:FolderShortcuts@", но в отличие от встроенной, показывает
