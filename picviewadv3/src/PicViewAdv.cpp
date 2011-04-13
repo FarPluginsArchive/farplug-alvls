@@ -511,7 +511,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[0].Type=DI_EDIT;
           DialogItems[0].X1=0; DialogItems[0].X2=info.WindowSizeX-1;
           DialogItems[0].Y1=0; DialogItems[0].Y2=0;
-          DialogItems[0].PtrData=info.FileName;
+          DialogItems[0].Data=info.FileName;
           DialogItems[1].Type=DI_USERCONTROL; DialogItems[1].Flags=DIF_FOCUS;
           DialogItems[1].X1=0; DialogItems[1].X2=info.WindowSizeX-1;
           DialogItems[1].Y1=1; DialogItems[1].Y2=info.WindowSizeY;
@@ -527,7 +527,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[0].Type=DI_DOUBLEBOX;
           DialogItems[0].X1=0; DialogItems[0].X2=PInfo.PanelRect.right-PInfo.PanelRect.left;
           DialogItems[0].Y1=0; DialogItems[0].Y2=PInfo.PanelRect.bottom-PInfo.PanelRect.top;
-          DialogItems[0].PtrData=FSF.PointToName(info.FileName);
+          DialogItems[0].Data=FSF.PointToName(info.FileName);
           DialogItems[1].Type=DI_USERCONTROL; DialogItems[1].Flags=DIF_FOCUS;
           DialogItems[1].X1=1; DialogItems[1].X2=PInfo.PanelRect.right-PInfo.PanelRect.left-1;
           DialogItems[1].Y1=1; DialogItems[1].Y2=PInfo.PanelRect.bottom-PInfo.PanelRect.top-2;
@@ -744,7 +744,7 @@ int WINAPI ConfigureW(const GUID* Guid)
   DialogItems[0].Type=DI_DOUBLEBOX;
   DialogItems[0].X1=3; DialogItems[0].X2=50;
   DialogItems[0].Y1=1; DialogItems[0].Y2=9;
-  DialogItems[0].PtrData=GetMsg(MTitle);
+  DialogItems[0].Data=GetMsg(MTitle);
 
   DialogItems[1].Type=DI_CHECKBOX;
   DialogItems[1].X1=5;
@@ -752,43 +752,43 @@ int WINAPI ConfigureW(const GUID* Guid)
   DialogItems[1].Flags=DIF_FOCUS;
   DialogItems[1].Flags|=DIF_DEFAULTBUTTON;
   DialogItems[1].Selected=Opt.AutomaticInViewer;
-  DialogItems[1].PtrData=GetMsg(MAutomaticInViewer);
+  DialogItems[1].Data=GetMsg(MAutomaticInViewer);
 
   DialogItems[2].Type=DI_CHECKBOX;
   DialogItems[2].X1=5;
   DialogItems[2].Y1=3;
   DialogItems[2].Selected=Opt.AutomaticInQuickView;
-  DialogItems[2].PtrData=GetMsg(MAutomaticInQuickView);
+  DialogItems[2].Data=GetMsg(MAutomaticInQuickView);
 
   DialogItems[3].Type=DI_CHECKBOX;
   DialogItems[3].X1=5;
   DialogItems[3].Y1=4;
   DialogItems[3].Selected=Opt.BilinearResizeInViewer;
-  DialogItems[3].PtrData=GetMsg(MBilinearResizeInViewer);
+  DialogItems[3].Data=GetMsg(MBilinearResizeInViewer);
 
   DialogItems[4].Type=DI_CHECKBOX;
   DialogItems[4].X1=5;
   DialogItems[4].Y1=5;
   DialogItems[4].Selected=Opt.BilinearResizeInQuickView;
-  DialogItems[4].PtrData=GetMsg(MBilinearResizeInQuickView);
+  DialogItems[4].Data=GetMsg(MBilinearResizeInQuickView);
 
   DialogItems[5].Type=DI_CHECKBOX;
   DialogItems[5].X1=5;
   DialogItems[5].Y1=6;
   DialogItems[5].Selected=Opt.Override;
-  DialogItems[5].PtrData=GetMsg(MOverride);
+  DialogItems[5].Data=GetMsg(MOverride);
 
   DialogItems[6].Type=DI_CHECKBOX;
   DialogItems[6].X1=5;
   DialogItems[6].Y1=7;
   DialogItems[6].Selected=Opt.IgnoreReadError;
-  DialogItems[6].PtrData=GetMsg(MIgnoreReadError);
+  DialogItems[6].Data=GetMsg(MIgnoreReadError);
 
   DialogItems[7].Type=DI_CHECKBOX;
   DialogItems[7].X1=5;
   DialogItems[7].Y1=8;
   DialogItems[7].Selected=Opt.ShowInViewer;
-  DialogItems[7].PtrData=GetMsg(MShowInViewer);
+  DialogItems[7].Data=GetMsg(MShowInViewer);
 
   HANDLE hDlg=Info.DialogInit(&MainGuid,&CfgDlgGuid,-1,-1,53,11,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,0,0,0);
 
