@@ -73,7 +73,7 @@ bool GetValue(HANDLE Handle,int Root,const TCHAR* Name,bool Default)
 {
   bool result=Default;
   FarSettingsItem item={Root,Name,FST_QWORD};
-  if(Info.SettingsControl(Handle,SCTL_GET,0,(INT_PTR)&item))
+  if(Info.SettingsControl(Handle,SCTL_GET,0,&item))
   {
     result=item.Number?true:false;
   }
@@ -84,7 +84,7 @@ void SetValue(HANDLE Handle,int Root,const TCHAR* Name,__int64 Value)
 {
   FarSettingsItem item={Root,Name,FST_QWORD};
   item.Number=Value;
-  Info.SettingsControl(Handle,SCTL_SET,0,(INT_PTR)&item);
+  Info.SettingsControl(Handle,SCTL_SET,0,&item);
 }
 
 void GetDIBFromBitmap(GFL_BITMAP *bitmap,BITMAPINFOHEADER *bitmap_info,unsigned char **data)
@@ -299,12 +299,12 @@ void UpdateInfoText(HANDLE hDlg, DialogData *data)
   wchar_t string[512];
   wchar_t *types[]={L"RGB",L"GREY",L"CMY",L"CMYK",L"YCBCR",L"YUV16",L"LAB",L"LOGLUV",L"LOGL"};
   FSF.sprintf(string,GetMsg(MImageInfo),data->pic_info->Width,data->pic_info->Height,data->GDIRect.right,data->GDIRect.bottom,data->pic_info->Xdpi,data->pic_info->Ydpi,data->Page,data->pic_info->NumberOfImages,types[data->pic_info->ColorModel]);
-  Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,2,(INT_PTR)string);
+  Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,2,string);
   COORD coord = {0,0};
-  Info.SendDlgMessage(hDlg,DM_SETCURSORPOS,2,(INT_PTR)&coord);
+  Info.SendDlgMessage(hDlg,DM_SETCURSORPOS,2,&coord);
 }
 
-INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,INT_PTR Param2)
+INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
 {
   DialogData *DlgParams=(DialogData *)Info.SendDlgMessage(hDlg,DM_GETDLGDATA,0,0);
 
@@ -317,17 +317,17 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,INT_PTR Param2)
       if(Param1==0)
       {
         if(DlgParams->ShowingIn==VIEWER)
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERTEXT)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS));
+          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0));
         else
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELTEXT)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)(DlgParams->SelfKeys?COL_PANELSELECTEDTITLE:COL_PANELTITLE))<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)(DlgParams->SelfKeys||DlgParams->CurPanel?COL_PANELSELECTEDTITLE:COL_PANELTITLE)));
+          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys?COL_PANELSELECTEDTITLE:COL_PANELTITLE),0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys||DlgParams->CurPanel?COL_PANELSELECTEDTITLE:COL_PANELTITLE),0));
       }
       if(Param1==2)
       {
         DlgParams->Redraw=true;
         if(DlgParams->ShowingIn==VIEWER)
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERTEXT)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERSTATUS));
+          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0));
         else
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELTEXT)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELTEXT)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELCURSOR)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELTEXT));
+          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELCURSOR,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0));
       }
       break;
     case DN_DRAWDLGITEM:
@@ -435,11 +435,11 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 {
   ViewerInfo info;
   info.StructSize=sizeof(ViewerInfo);
-  if(Info.ViewerControl(-1,VCTL_GETINFO,0,(INT_PTR)&info))
+  if(Info.ViewerControl(-1,VCTL_GETINFO,0,&info))
   {
     DialogData data;
     PanelInfo PInfo; PInfo.StructSize=sizeof(PanelInfo);
-    Info.Control(XPanelInfo,FCTL_GETPANELINFO,0,(INT_PTR)&PInfo);
+    Info.PanelControl(XPanelInfo,FCTL_GETPANELINFO,0,&PInfo);
 
     if(info.WindowSizeX==(PInfo.PanelRect.right-PInfo.PanelRect.left-1)&&PInfo.PanelType==PTYPE_QVIEWPANEL)
     {
@@ -467,7 +467,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
         ViewerRect.right=info.WindowSizeX-1;
         ViewerRect.bottom=info.WindowSizeY+1;
       }
-      data.FarWindow=(HWND)Info.AdvControl(&MainGuid,ACTL_GETFARHWND,0);
+      data.FarWindow=(HWND)Info.AdvControl(&MainGuid,ACTL_GETFARHWND,0,0);
       size_t Size=FSF.ConvertPath(CPM_NATIVE,info.FileName,NULL,0);
       FSF.ConvertPath(CPM_NATIVE,info.FileName,data.FileName,Size>=32768?32767:Size);
 
@@ -520,7 +520,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[2].Y1=info.WindowSizeY+1;
           DialogItems[2].Flags=DIF_READONLY;
           VBufSize=(info.WindowSizeY)*(info.WindowSizeX);
-          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_VIEWERTEXT);
+          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0);
         }
         else
         {
@@ -536,7 +536,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[2].Y1=PInfo.PanelRect.bottom-PInfo.PanelRect.top-1;
           DialogItems[2].Flags=DIF_READONLY;
           VBufSize=(PInfo.PanelRect.right-PInfo.PanelRect.left-1)*(PInfo.PanelRect.bottom-PInfo.PanelRect.top-2);
-          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(void*)COL_PANELTEXT);
+          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0);
         }
 
         color=color&0xF0;
@@ -554,7 +554,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
             VirtualBuffer[i].Attributes=color;
           }
 
-          HANDLE hDlg=Info.DialogInit(&MainGuid,&DlgGuid,ViewerRect.left,ViewerRect.top,ViewerRect.right,ViewerRect.bottom,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_NODRAWSHADOW,PicDialogProc,(INT_PTR)&data);
+          HANDLE hDlg=Info.DialogInit(&MainGuid,&DlgGuid,ViewerRect.left,ViewerRect.top,ViewerRect.right,ViewerRect.bottom,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_NODRAWSHADOW,PicDialogProc,&data);
           if (hDlg != INVALID_HANDLE_VALUE)
           {
             Info.DialogRun(hDlg);
@@ -582,7 +582,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
             if(FSF.FarKeyToName(data.ResKey,Key,256)>256) Key[0]=0;
             macro.SequenceText=Key;
           }
-          Info.MacroControl(0,MCTL_SENDSTRING,MSSC_POST,(INT_PTR)&macro);
+          Info.MacroControl(0,MCTL_SENDSTRING,MSSC_POST,&macro);
         }
       }
       else
@@ -618,13 +618,13 @@ int WINAPI ProcessViewerEventW(int Event,void *Param)
   {
     HANDLE XPanelInfo=PANEL_PASSIVE;
     struct WindowType wi; wi.StructSize=sizeof(WindowType);
-    if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,(void *)&wi) && wi.Type==WTYPE_PANELS)
+    if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,(void *)&wi) && wi.Type==WTYPE_PANELS)
     {
-      Info.Control(PANEL_PASSIVE,FCTL_REDRAWPANEL,0,0);
-      Info.Control(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
+      Info.PanelControl(PANEL_PASSIVE,FCTL_REDRAWPANEL,0,0);
+      Info.PanelControl(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
 
       struct PanelInfo pi; pi.StructSize=sizeof(PanelInfo);
-      Info.Control(PANEL_ACTIVE,FCTL_GETPANELINFO,0,(LONG_PTR)&pi);
+      Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&pi);
       if (pi.PanelType==PTYPE_QVIEWPANEL)
         XPanelInfo=PANEL_ACTIVE;
     }
@@ -666,7 +666,7 @@ void WINAPI SetStartupInfoW(const struct PluginStartupInfo *Info)
     SetDefaultExtentions();
 
     FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
-    if(::Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,(INT_PTR)&settings))
+    if(::Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
     {
       int root=0; // корень ключа
       Opt.AutomaticInViewer=GetValue(settings.Handle,root,L"AutomaticInViewer",0);
@@ -726,7 +726,7 @@ void WINAPI ExitFARW()
 int WINAPI ConfigureW(const GUID* Guid)
 {
   FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
-  if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,(INT_PTR)&settings))
+  if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
   {
     int root=0; // корень ключа
     Opt.AutomaticInViewer=GetValue(settings.Handle,root,L"AutomaticInViewer",0);
@@ -805,7 +805,7 @@ int WINAPI ConfigureW(const GUID* Guid)
       Opt.ShowInViewer=Info.SendDlgMessage(hDlg,DM_GETCHECK,7,0);
 
       FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
-      if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,(INT_PTR)&settings))
+      if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
       {
         int root=0;
         SetValue(settings.Handle,root,L"AutomaticInViewer",Opt.AutomaticInViewer);
