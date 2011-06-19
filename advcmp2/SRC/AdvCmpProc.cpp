@@ -655,8 +655,8 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 				RList.Dir=(wchar_t*)malloc((wcslen(RDir)+1)*sizeof(wchar_t));
 				if (RList.Dir) wcscpy(RList.Dir,RDir);
 
-				if (!Info.GetPluginDirList(0,LPanel.hPlugin,pLPPI->FindData.lpwszFileName,&LList.PPI,&LList.ItemsNumber) ||
-						!Info.GetPluginDirList(0,RPanel.hPlugin,pRPPI->FindData.lpwszFileName,&RList.PPI,&RList.ItemsNumber) )
+				if (!Info.GetPluginDirList(Info.ModuleNumber,LPanel.hPlugin,pLPPI->FindData.lpwszFileName,&LList.PPI,&LList.ItemsNumber) ||
+						!Info.GetPluginDirList(Info.ModuleNumber,RPanel.hPlugin,pRPPI->FindData.lpwszFileName,&RList.PPI,&RList.ItemsNumber) )
 				{
 					bBrokenByEsc=true; // То ли юзер прервал, то ли ошибка чтения
 					bEqual=false; // Остановим сравнение
@@ -669,7 +669,7 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 				if (RList.Dir) wcscpy(RList.Dir,RDir);
 //				DebugMsg(L"RPanel.bARC",RList.Dir);
 				if (!GetDirList(strLFullDir,&LList) ||
-						!Info.GetPluginDirList(0,RPanel.hPlugin,pRPPI->FindData.lpwszFileName,&RList.PPI,&RList.ItemsNumber) )
+						!Info.GetPluginDirList(Info.ModuleNumber,RPanel.hPlugin,pRPPI->FindData.lpwszFileName,&RList.PPI,&RList.ItemsNumber) )
 				{
 					bBrokenByEsc=true; // То ли юзер прервал, то ли ошибка чтения
 					bEqual=false; // Остановим сравнение
@@ -688,7 +688,7 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 				if (LList.Dir) wcscpy(LList.Dir,LDir);
 
 				if (!GetDirList(strRFullDir,&RList) ||
-						!Info.GetPluginDirList(0,LPanel.hPlugin,pLPPI->FindData.lpwszFileName,&LList.PPI,&LList.ItemsNumber) )
+						!Info.GetPluginDirList(Info.ModuleNumber,LPanel.hPlugin,pLPPI->FindData.lpwszFileName,&LList.PPI,&LList.ItemsNumber) )
 				{
 					bBrokenByEsc=true; // То ли юзер прервал, то ли ошибка чтения
 					bEqual=false; // Остановим сравнение
@@ -945,8 +945,10 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 				char *LPtr=Opt.Buf[0]+LBufPos, *RPtr=Opt.Buf[1]+RBufPos;
 				bool bLExpectNewLine=false, bRExpectNewLine=false;
 				SHFILEINFO shinfo;
-				bool bExe=(SHGetFileInfoW(strLFullFileName,0,&shinfo,sizeof(shinfo),SHGFI_EXETYPE) ||
-									SHGetFileInfoW(strRFullFileName,0,&shinfo,sizeof(shinfo),SHGFI_EXETYPE));
+				bool bExe=0;
+				if (!(LPanel.bARC || RPanel.bARC))
+					bExe=(SHGetFileInfoW(strLFullFileName,0,&shinfo,sizeof(shinfo),SHGFI_EXETYPE) ||
+								SHGetFileInfoW(strRFullFileName,0,&shinfo,sizeof(shinfo),SHGFI_EXETYPE));
 
 				DWORD dwFileCRC=0;
 				__int64 PartlyKbSize=(__int64)Opt.PartlyKbSize*1024;
@@ -1199,23 +1201,26 @@ bool AdvCmpProc::CompareFiles(const wchar_t *LDir, const PluginPanelItem *pLPPI,
 
 				}
 			}
-			CloseHandle(hLFile);
-			CloseHandle(hRFile);
-
-			if ((hLFile=CreateFileW(strLFullFileName, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
-                               OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0)) != INVALID_HANDLE_VALUE)
+			if (!LPanel.bARC)
 			{
-				SetFileTime(hLFile,0,&LAccess,0);
 				CloseHandle(hLFile);
+				if ((hLFile=CreateFileW(strLFullFileName, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
+                                OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0)) != INVALID_HANDLE_VALUE)
+				{
+					SetFileTime(hLFile,0,&LAccess,0);
+					CloseHandle(hLFile);
+				}
 			}
-
-			if ((hRFile=CreateFileW(strRFullFileName, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
-                               OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0)) != INVALID_HANDLE_VALUE)
+			if (!RPanel.bARC)
 			{
-				SetFileTime(hRFile,0,&RAccess,0);
 				CloseHandle(hRFile);
+				if ((hRFile=CreateFileW(strRFullFileName, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
+                                OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0)) != INVALID_HANDLE_VALUE)
+				{
+					SetFileTime(hRFile,0,&RAccess,0);
+					CloseHandle(hRFile);
+				}
 			}
-
 			if (!bEqual)
 			{
 				CmpInfo.ProcSize+=CmpInfo.CurCountSize-CmpInfo.CurProcSize;
