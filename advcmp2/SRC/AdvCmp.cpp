@@ -285,7 +285,7 @@ bool LoadGfl(wchar_t *PlugPath)
  * Эти функции плагина FAR вызывает в первую очередь
  ****************************************************************************/
 // установим минимально поддерживаемую версию FARа...
-int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1805); }
+int WINAPI _export GetMinFarVersionW() { return MAKEFARVERSION(2,0,1807); }
 
 // заполним структуру PluginStartupInfo и сделаем ряд полезных действий...
 void WINAPI _export SetStartupInfoW(const struct PluginStartupInfo *Info)
