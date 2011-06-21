@@ -316,18 +316,44 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
     case DN_CTLCOLORDLGITEM:
       if(Param1==0)
       {
+        FarColor Color;
+        struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
         if(DlgParams->ShowingIn==VIEWER)
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0));
+        {
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,&Color);
+          Colors->Colors[0] = Colors->Colors[2] = Colors->Colors[3] = Color;
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,&Color);
+          Colors->Colors[1] = Color;
+        }
         else
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys?COL_PANELSELECTEDTITLE:COL_PANELTITLE),0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys||DlgParams->CurPanel?COL_PANELSELECTEDTITLE:COL_PANELTITLE),0));
+        {
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys||DlgParams->CurPanel?COL_PANELSELECTEDTITLE:COL_PANELTITLE),&Color);
+          Colors->Colors[0] = Color;
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,(DlgParams->SelfKeys?COL_PANELSELECTEDTITLE:COL_PANELTITLE),&Color);
+          Colors->Colors[1] = Color;
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,&Color);
+          Colors->Colors[2] = Color;
+        }
       }
       if(Param1==2)
       {
         DlgParams->Redraw=true;
+        FarColor Color;
+        struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
         if(DlgParams->ShowingIn==VIEWER)
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,0));
+        {
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERSTATUS,&Color);
+          Colors->Colors[0] = Colors->Colors[2] = Colors->Colors[3] = Color;
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,&Color);
+          Colors->Colors[1] = Color;
+        }
         else
-          return (Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<24)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0)<<16)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELCURSOR,0)<<8)|(Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0));
+        {
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,&Color);
+          Colors->Colors[0] = Colors->Colors[2] = Colors->Colors[3] = Color;
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELCURSOR,&Color);
+          Colors->Colors[1] = Color;
+        }
       }
       break;
     case DN_DRAWDLGITEM:
@@ -505,7 +531,8 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
       {
         FarDialogItem DialogItems[3];
         memset(DialogItems,0,sizeof(DialogItems));
-        unsigned int VBufSize; int color;
+        unsigned int VBufSize;
+        FarColor Color;
         if(data.ShowingIn==VIEWER)
         {
           DialogItems[0].Type=DI_EDIT;
@@ -520,7 +547,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[2].Y1=info.WindowSizeY+1;
           DialogItems[2].Flags=DIF_READONLY;
           VBufSize=(info.WindowSizeY)*(info.WindowSizeX);
-          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,0);
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_VIEWERTEXT,&Color);
         }
         else
         {
@@ -536,11 +563,11 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[2].Y1=PInfo.PanelRect.bottom-PInfo.PanelRect.top-1;
           DialogItems[2].Flags=DIF_READONLY;
           VBufSize=(PInfo.PanelRect.right-PInfo.PanelRect.left-1)*(PInfo.PanelRect.bottom-PInfo.PanelRect.top-2);
-          color=Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,0);
+          Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,&Color);
         }
-
-        color=color&0xF0;
-        color=color|(color>>4);
+        int color=0x1B;
+        if((Color.Flags&FCF_FG_4BIT) && (Color.Flags&FCF_BG_4BIT))
+          color=Color.ForegroundColor|(Color.BackgroundColor<<4);
 
         CHAR_INFO *VirtualBuffer;
         VirtualBuffer=(CHAR_INFO *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,VBufSize*sizeof(CHAR_INFO));
@@ -550,7 +577,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[1].VBuf=VirtualBuffer;
           for(unsigned int i=0;i<VBufSize;i++)
           {
-            VirtualBuffer[i].Char.UnicodeChar=L'.';
+            VirtualBuffer[i].Char.UnicodeChar=L' ';
             VirtualBuffer[i].Attributes=color;
           }
 
