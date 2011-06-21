@@ -565,20 +565,16 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           VBufSize=(PInfo.PanelRect.right-PInfo.PanelRect.left-1)*(PInfo.PanelRect.bottom-PInfo.PanelRect.top-2);
           Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_PANELTEXT,&Color);
         }
-        int color=0x1B;
-        if((Color.Flags&FCF_FG_4BIT) && (Color.Flags&FCF_BG_4BIT))
-          color=Color.ForegroundColor|(Color.BackgroundColor<<4);
-
-        CHAR_INFO *VirtualBuffer;
-        VirtualBuffer=(CHAR_INFO *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,VBufSize*sizeof(CHAR_INFO));
+        FAR_CHAR_INFO *VirtualBuffer;
+        VirtualBuffer=(FAR_CHAR_INFO *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,VBufSize*sizeof(FAR_CHAR_INFO));
 
         if (VirtualBuffer)
         {
           DialogItems[1].VBuf=VirtualBuffer;
           for(unsigned int i=0;i<VBufSize;i++)
           {
-            VirtualBuffer[i].Char.UnicodeChar=L' ';
-            VirtualBuffer[i].Attributes=color;
+            VirtualBuffer[i].Char=L' ';
+            VirtualBuffer[i].Attributes=Color;
           }
 
           HANDLE hDlg=Info.DialogInit(&MainGuid,&DlgGuid,ViewerRect.left,ViewerRect.top,ViewerRect.right,ViewerRect.bottom,NULL,DialogItems,sizeof(DialogItems)/sizeof(DialogItems[0]),0,FDLG_SMALLDIALOG|FDLG_NODRAWSHADOW,PicDialogProc,&data);
