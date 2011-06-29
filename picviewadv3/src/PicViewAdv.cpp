@@ -635,9 +635,9 @@ void SetDefaultExtentions()
   }
 }
 
-int WINAPI ProcessViewerEventW(int Event,void *Param)
+int WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
 {
-  if(Event==VE_READ)
+  if(pveInfo->Event==VE_READ)
   {
     HANDLE XPanelInfo=PANEL_PASSIVE;
     struct WindowType wi; wi.StructSize=sizeof(WindowType);
@@ -746,7 +746,7 @@ void WINAPI ExitFARW(const struct ExitInfo *Info)
   ExtsNum=0;
 }
 
-int WINAPI ConfigureW(const GUID* Guid)
+int WINAPI ConfigureW(const struct ConfigureInfo *cfgInfo)
 {
   FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
   if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
