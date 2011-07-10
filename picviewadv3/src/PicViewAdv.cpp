@@ -19,21 +19,28 @@
 #include "libgfl.h"
 #include "farcolor.hpp"
 #include "plugin.hpp"
-#include "farkeys.hpp"
 //#include "crt.hpp"
 #include <initguid.h>
 
 // {9F25A250-45D2-45a0-90A3-5686B2A048FA}
 DEFINE_GUID(MainGuid,0x9f25a250, 0x45d2, 0x45a0, 0x90, 0xa3, 0x56, 0x86, 0xb2, 0xa0, 0x48, 0xfa);
-
 // {A59072DC-49BA-4598-BBFB-F7906A7A821D}
 DEFINE_GUID(MenuGuid,0xa59072dc, 0x49ba, 0x4598, 0xbb, 0xfb, 0xf7, 0x90, 0x6a, 0x7a, 0x82, 0x1d);
-
 // {66ffe4cf-ee00-4b45-b91a-163f7c57d084}
 DEFINE_GUID(DlgGuid,0x66ffe4cf, 0xee00, 0x4b45, 0xb9, 0x1a, 0x16, 0x3f, 0x7c, 0x57, 0xd0, 0x84);
-
 // {CADF6A67-7D6D-4072-8C88-BD604D1C3CC7}
 DEFINE_GUID(CfgDlgGuid,0xcadf6a67, 0x7d6d, 0x4072, 0x8c, 0x88, 0xbd, 0x60, 0x4d, 0x1c, 0x3c, 0xc7);
+
+///
+#define ControlKeyAllMask (RIGHT_ALT_PRESSED|LEFT_ALT_PRESSED|RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED|SHIFT_PRESSED)
+#define ControlKeyAltMask (RIGHT_ALT_PRESSED|LEFT_ALT_PRESSED)
+#define ControlKeyNonAltMask (RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED|SHIFT_PRESSED)
+#define ControlKeyCtrlMask (RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED)
+#define ControlKeyNonCtrlMask (RIGHT_ALT_PRESSED|LEFT_ALT_PRESSED|SHIFT_PRESSED)
+#define IsShift(rec) (((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyAllMask)==SHIFT_PRESSED)
+#define IsAlt(rec) (((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyAltMask)&&!((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyNonAltMask))
+#define IsCtrl(rec) (((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyCtrlMask)&&!((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyNonCtrlMask))
+#define IsNone(rec) (((rec)->Event.KeyEvent.dwControlKeyState&ControlKeyAllMask)==0)
 
 struct PluginStartupInfo Info;
 struct FarStandardFunctions FSF;
@@ -170,7 +177,7 @@ struct DialogData
   bool CurPanel;
   bool Loaded;
   bool FirstRun;
-  long ResKey;
+  INPUT_RECORD ResKey;
   BITMAPINFOHEADER *BmpHeader;
   unsigned char *DibData;
   GFL_FILE_INFORMATION *pic_info;
@@ -383,73 +390,98 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
       if(!DlgParams->SelfKeys)
       {
         const INPUT_RECORD* record=(const INPUT_RECORD *)Param2;
-        long key=0;
-        if(record->EventType==KEY_EVENT)
-          key=FSF.FarInputRecordToKey(record);
-        if((key&(KEY_CTRL|KEY_ALT|KEY_SHIFT|KEY_RCTRL|KEY_RALT))==key) break;
-        switch(key)
+        if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
         {
-          case KEY_CTRLR:
-            UpdateImage(DlgParams);
-            return TRUE;
-          case KEY_CTRLD:
-          case KEY_CTRLS:
-          case KEY_CTRLE:
+          WORD vk=record->Event.KeyEvent.wVirtualKeyCode;
+
+          switch(vk)
           {
-            FreeImage(DlgParams);
-            if(key==KEY_CTRLD) DlgParams->Rotate-=90;
-            else if (key==KEY_CTRLS) DlgParams->Rotate+=90;
-            else DlgParams->Rotate+=180;
-            DlgParams->Loaded=false;
-            UpdateImage(DlgParams);
-            UpdateInfoText(hDlg,DlgParams);
-            return TRUE;
+            case 0x52: //VK_R
+            {
+              if (IsCtrl(record))
+              {
+                UpdateImage(DlgParams);
+                return TRUE; 
+              }
+              break;
+            }
+            case 0x44: //VK_D
+            case 0x53: //VK_S
+            case 0x45: //VK_E
+            {
+              if (IsCtrl(record))
+              {
+                FreeImage(DlgParams);
+                if(vk==0x44) DlgParams->Rotate-=90;
+                else if (vk==0x53) DlgParams->Rotate+=90;
+                else DlgParams->Rotate+=180;
+                DlgParams->Loaded=false;
+                UpdateImage(DlgParams);
+                UpdateInfoText(hDlg,DlgParams);
+                return TRUE;
+              }
+              break;
+            }
+            case VK_TAB:
+            {
+              if (IsNone(record))
+              {
+                DlgParams->SelfKeys=true;
+                Info.SendDlgMessage(hDlg,DM_SETFOCUS,2,0);
+                return TRUE;
+              }
+              break;
+            }
+            case VK_BACK:
+            case VK_SPACE:
+              if (IsNone(record) && DlgParams->ShowingIn==VIEWER)
+                vk=(vk==VK_BACK?VK_SUBTRACT:VK_ADD);
+            default:
+              if (IsNone(record) && DlgParams->ShowingIn==VIEWER && vk==VK_F3)
+                vk=VK_ESCAPE;
+              if (IsNone(record) && DlgParams->ShowingIn==QUICKVIEW && vk==VK_DELETE)
+                vk=VK_F8;
+              DlgParams->ResKey=*record;
+              DlgParams->ResKey.Event.KeyEvent.wVirtualKeyCode=vk;
+              Info.SendDlgMessage(hDlg,DM_CLOSE,-1,0);
+              return TRUE;
           }
-          case KEY_TAB:
-            DlgParams->SelfKeys=true;
-            Info.SendDlgMessage(hDlg,DM_SETFOCUS,2,0);
-            return TRUE;
-          case KEY_BS:
-          case KEY_SPACE:
-            if(DlgParams->ShowingIn==VIEWER)
-              key=key==KEY_BS?KEY_SUBTRACT:KEY_ADD;
-          default:
-            if(DlgParams->ShowingIn==VIEWER && key==KEY_F3)
-              key=KEY_ESC;
-            if(DlgParams->ShowingIn==QUICKVIEW && key==KEY_DEL)
-              key=KEY_F8;
-            DlgParams->ResKey=key;
-            Info.SendDlgMessage(hDlg,DM_CLOSE,-1,0);
-            return TRUE;
         }
       }
       else
       {
         const INPUT_RECORD* record=(const INPUT_RECORD *)Param2;
-        long key=0;
-        if(record->EventType==KEY_EVENT)
-          key=FSF.FarInputRecordToKey(record);
-        switch(key)
+        if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
         {
-          case KEY_TAB:
-            DlgParams->SelfKeys=false;
-            Info.SendDlgMessage(hDlg,DM_SETFOCUS,1,0);
-            return TRUE;
-          case KEY_ADD:
-          case KEY_SUBTRACT:
-            if(DlgParams->DibData)
+          WORD vk=record->Event.KeyEvent.wVirtualKeyCode;
+          switch(vk)
+          {
+            case VK_TAB:
             {
-              int Pages=DlgParams->pic_info->NumberOfImages;
-              FreeImage(DlgParams);
-              DlgParams->Loaded=false;
-              if(key==KEY_ADD) DlgParams->Page++;
-              else DlgParams->Page--;
-              if(DlgParams->Page<1) DlgParams->Page=Pages;
-              if(DlgParams->Page>Pages) DlgParams->Page=1;
-              UpdateImage(DlgParams);
-              UpdateInfoText(hDlg,DlgParams);
+              if (IsNone(record))
+              {
+                DlgParams->SelfKeys=false;
+                Info.SendDlgMessage(hDlg,DM_SETFOCUS,1,0);
+                return TRUE;
+              }
+              break;
             }
-            return TRUE;
+            case VK_ADD:
+            case VK_SUBTRACT:
+              if (IsNone(record) && DlgParams->DibData)
+              {
+                int Pages=DlgParams->pic_info->NumberOfImages;
+                FreeImage(DlgParams);
+                DlgParams->Loaded=false;
+                if(vk==VK_ADD) DlgParams->Page++;
+                else DlgParams->Page--;
+                if(DlgParams->Page<1) DlgParams->Page=Pages;
+                if(DlgParams->Page>Pages) DlgParams->Page=1;
+                UpdateImage(DlgParams);
+                UpdateInfoText(hDlg,DlgParams);
+              }
+              return TRUE;
+          }
         }
       }
       break;
@@ -517,7 +549,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
       data.Redraw=false;
       data.SelfKeys=false;
       data.Loaded=false;
-      data.ResKey=0;
+      memset(&data.ResKey,0,sizeof(data.ResKey));
       BITMAPINFOHEADER BmpHeader;
       data.BmpHeader=&BmpHeader;
       data.DibData=NULL;
@@ -589,20 +621,21 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 
         FreeImage(&data);
 
-        if(data.ResKey)
+        if(!data.SelfKeys)
         {
           struct MacroSendMacroText macro;
           macro.StructSize=sizeof(MacroSendMacroText);
           macro.Flags=KMFLAGS_DISABLEOUTPUT;
-          macro.AKey=data.ResKey;
+          macro.AKey=data.ResKey.Event.KeyEvent.wVirtualKeyCode;
           wchar_t Key[256];
-          if (data.ResKey==KEY_ESC && data.ShowingIn==VIEWER)
+
+          if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_ESCAPE && data.ShowingIn==VIEWER)
           {
             macro.SequenceText=L"CtrlF10 Esc";
           }
           else
           {
-            if(FSF.FarKeyToName(data.ResKey,Key,256)>256) Key[0]=0;
+            if(!FSF.FarInputRecordToName(&data.ResKey,Key,256)) Key[0]=0;
             macro.SequenceText=Key;
           }
           Info.MacroControl(0,MCTL_SENDSTRING,MSSC_POST,&macro);
