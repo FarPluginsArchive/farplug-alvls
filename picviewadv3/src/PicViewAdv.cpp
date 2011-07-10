@@ -626,7 +626,8 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           struct MacroSendMacroText macro;
           macro.StructSize=sizeof(MacroSendMacroText);
           macro.Flags=KMFLAGS_DISABLEOUTPUT;
-          macro.AKey=data.ResKey.Event.KeyEvent.wVirtualKeyCode;
+          macro.AKey.VirtualKeyCode=data.ResKey.Event.KeyEvent.wVirtualKeyCode;
+          macro.AKey.ControlKeyState=data.ResKey.Event.KeyEvent.dwControlKeyState;
           wchar_t Key[256];
 
           if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_ESCAPE && data.ShowingIn==VIEWER)
