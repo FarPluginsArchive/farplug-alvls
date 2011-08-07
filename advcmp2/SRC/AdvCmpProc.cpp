@@ -1494,7 +1494,11 @@ bool AdvCmpProc::CompareDirs(const struct DirList *pLList,const struct DirList *
 
 	// экспресс-сравнение вложенного каталога
 	if (ScanDepth && Opt.Panel && !Opt.IgnoreMissing && LII.iCount!=RII.iCount)
+	{
+		FreeItemsIndex(&LII);
+		FreeItemsIndex(&RII);
 		return false;
+	}
 
 	int i, j;
 
