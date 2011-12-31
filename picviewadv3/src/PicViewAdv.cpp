@@ -680,9 +680,15 @@ int WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
       Info.PanelControl(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
 
       struct PanelInfo pi; pi.StructSize=sizeof(PanelInfo);
+      Info.PanelControl(PANEL_PASSIVE,FCTL_GETPANELINFO,0,&pi);
+      if (pi.PanelType==PTYPE_INFOPANEL)
+        return 0;
+      pi.StructSize=sizeof(PanelInfo);
       Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&pi);
       if (pi.PanelType==PTYPE_QVIEWPANEL)
         XPanelInfo=PANEL_ACTIVE;
+      else if (pi.PanelType==PTYPE_INFOPANEL)
+        return 0;
     }
     GetJiggyWithIt(XPanelInfo,Opt.Override?true:false,false);
   }
