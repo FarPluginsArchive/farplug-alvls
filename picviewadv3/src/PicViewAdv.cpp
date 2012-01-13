@@ -676,9 +676,6 @@ int WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
     struct WindowType wi; wi.StructSize=sizeof(WindowType);
     if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,(void *)&wi) && wi.Type==WTYPE_PANELS)
     {
-      Info.PanelControl(PANEL_PASSIVE,FCTL_REDRAWPANEL,0,0);
-      Info.PanelControl(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
-
       struct PanelInfo pi; pi.StructSize=sizeof(PanelInfo);
       Info.PanelControl(PANEL_PASSIVE,FCTL_GETPANELINFO,0,&pi);
       if (pi.PanelType==PTYPE_INFOPANEL)
@@ -689,6 +686,9 @@ int WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
         XPanelInfo=PANEL_ACTIVE;
       else if (pi.PanelType==PTYPE_INFOPANEL)
         return 0;
+      // только после проверки! во избежание рекурсии в инфопанели
+      Info.PanelControl(PANEL_PASSIVE,FCTL_REDRAWPANEL,0,0);
+      Info.PanelControl(PANEL_ACTIVE,FCTL_REDRAWPANEL,0,0);
     }
     GetJiggyWithIt(XPanelInfo,Opt.Override?true:false,false);
   }
