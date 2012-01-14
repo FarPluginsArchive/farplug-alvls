@@ -224,15 +224,6 @@ bool DrawImage(DialogData *data)
     GFL_ERROR res=gflLoadBitmapW(data->FileName,&RawPicture,&load_params,data->pic_info);
     if(res)
     {
-/*
-      wchar_t buf[80]; FSF.itoa(res, buf,10);
-      wchar_t *MsgItems[4];
-      MsgItems[0]=(wchar_t *)GetMsg(MTitle);
-      MsgItems[1]=L"gflLoadBitmapW()";
-      MsgItems[2]=L"GFL_ERROR:";
-      MsgItems[3]=buf;
-      Info.Message(Info.ModuleNumber,FMSG_WARNING|FMSG_MB_OK,0,MsgItems,sizeof(MsgItems)/sizeof(MsgItems[0]),1);
-*/
       RawPicture=NULL;
     }
     if(RawPicture)
