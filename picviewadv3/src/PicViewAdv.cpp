@@ -428,8 +428,6 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
               if (IsNone(record) && DlgParams->ShowingIn==VIEWER)
                 vk=(vk==VK_BACK?VK_SUBTRACT:VK_ADD);
             default:
-              if (IsNone(record) && DlgParams->ShowingIn==VIEWER && vk==VK_F3)
-                vk=VK_ESCAPE;
               if (IsNone(record) && DlgParams->ShowingIn==QUICKVIEW && vk==VK_DELETE)
                 vk=VK_F8;
               DlgParams->ResKey=*record;
@@ -620,7 +618,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           macro.AKey=data.ResKey;
           wchar_t Key[256];
 
-          if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_ESCAPE && data.ShowingIn==VIEWER)
+          if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_F3 && data.ShowingIn==VIEWER)
           {
             macro.SequenceText=L"CtrlF10 Esc";
           }
