@@ -52,6 +52,10 @@ Note:
 The plugin can load GFL plugins if they are placed in the same folder as the
 plugin itself. They can be downloaded from http://www.xnview.com/.
 
+Для работы плагина требуется библиотека MSVCR100.dll - входит в 
+"Распространяемый пакет Microsoft Visual C++ 2010 (x86)", скачать
+можно с странички плагина или сайта Майкрософта.
+
 Credits:
 --------
 Most credits go to the original author of the PicView plugin.
