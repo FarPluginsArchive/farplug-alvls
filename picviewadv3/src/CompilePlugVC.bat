@@ -1,7 +1,7 @@
 @echo off
 @cls
 
-rem =============== Use Microsoft Visual Studio .NET 2003 ======================
+rem =============== Use Microsoft Visual Studio  ===============================
 
 @call "%VS100COMNTOOLS%vsvars32.bat"
 

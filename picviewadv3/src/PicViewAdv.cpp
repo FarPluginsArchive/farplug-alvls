@@ -19,7 +19,6 @@
 #include "libgfl.h"
 #include "farcolor.hpp"
 #include "plugin.hpp"
-//#include "crt.hpp"
 #include <initguid.h>
 
 // {9F25A250-45D2-45a0-90A3-5686B2A048FA}
@@ -295,7 +294,7 @@ void FreeImage(DialogData *data)
 void UpdateInfoText(HANDLE hDlg, DialogData *data)
 {
   wchar_t string[512];
-  wchar_t *types[]={L"RGB",L"GREY",L"CMY",L"CMYK",L"YCBCR",L"YUV16",L"LAB",L"LOGLUV",L"LOGL"};
+  const wchar_t *types[]={L"RGB",L"GREY",L"CMY",L"CMYK",L"YCBCR",L"YUV16",L"LAB",L"LOGLUV",L"LOGL"};
   FSF.sprintf(string,GetMsg(MImageInfo),data->pic_info->Width,data->pic_info->Height,data->GDIRect.right,data->GDIRect.bottom,data->pic_info->Xdpi,data->pic_info->Ydpi,data->Page,data->pic_info->NumberOfImages,types[data->pic_info->ColorModel]);
   Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,2,string);
   COORD coord = {0,0};
@@ -710,7 +709,7 @@ void WINAPI SetStartupInfoW(const struct PluginStartupInfo *Info)
     ::Info.FSF = &FSF;
     wchar_t folder[32768];
     lstrcpy(folder, Info->ModuleName);
-    (wchar_t)*(FSF.PointToName(folder)) = 0;
+    *(wchar_t*)(FSF.PointToName(folder)) = 0;
     gflSetPluginsPathnameW(folder);
     gflLibraryInit();
     gflEnableLZW(GFL_TRUE);

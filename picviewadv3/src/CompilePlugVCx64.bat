@@ -1,19 +1,19 @@
 @echo off
 @cls
 
-rem ===================== Use Microsoft Visual Studio ==========================
+rem =============== Use Microsoft Visual Studio  ===============================
 
  @call "%VS100COMNTOOLS%..\..\VC\vcvarsall.bat" amd64
 
 rem  ======================== Set name and version ... =========================
 
-@set PlugName=AdvCmp
-@set fileversion=3,0,0,34
-@set fileversion_str=3.0 build 34
+@set PlugName=PicViewAdv
+@set fileversion=3,0,0,8
+@set fileversion_str=3.0 build 8
 @set MyDir=%CD%
 @set companyname=Eugene Roshal ^& FAR Group
-@set filedescription=Advanced compare 2 for Far Manager
-@set legalcopyright=Copyright c 2006-2012 Alexey Samlyukov
+@set filedescription=PicView Advanced for Far Manager
+
 
 rem  ==================== Make %PlugName%.def file... ==========================
 
@@ -26,9 +26,11 @@ echo Make %PlugName%.def file...
 @echo   GetPluginInfoW                                     >> %PlugName%.def
 @echo   OpenW                                              >> %PlugName%.def
 @echo   GetGlobalInfoW                                     >> %PlugName%.def
+@echo   ConfigureW                                         >> %PlugName%.def
+@echo   ProcessViewerEventW                                >> %PlugName%.def
 @echo   ExitFARW                                           >> %PlugName%.def
 
-@if exist %PlugName%.def echo ... succesfully
+@if exist %PlugName%.def echo ... successfully
 )
 
 rem  ================== Make %PlugName%.rc file... =============================
@@ -68,7 +70,7 @@ echo Make %PlugName%.rc file...
 @echo   }                                                       >> %PlugName%.rc
 @echo }                                                         >> %PlugName%.rc
 
-@if exist %PlugName%.rc echo ... succesfully
+@if exist %PlugName%.rc echo ... successfully
 )
 
 rem  ==================== Compile %PlugName%.dll file...========================
@@ -76,13 +78,15 @@ rem  ==================== Compile %PlugName%.dll file...========================
 @cd ".."
 @if exist %PlugName%.dll del %PlugName%.dll>nul
 
+@echo !!!!!!!  Compile %PlugName%.dll with MSVCRT.dll ...  !!!!!!!
+
 @cd %MyDir%
 @rc /l 0x4E4 %PlugName%.rc
-@cl /Zp8 /O1i /GF /Gr /GS- /GR- /EHs-c- /LD %PlugName%.cpp string.cpp AdvCmpDlgOpt.cpp AdvCmpProc.cpp /D "UNICODE" /D "_UNICODE" /link /subsystem:console /machine:AMD64 /nodefaultlib /def:%PlugName%.def kernel32.lib advapi32.lib user32.lib shell32.lib gdi32.lib MSVCRT.LIB %PlugName%.res /map:"..\%PlugName%.map" /out:"..\%PlugName%.dll" /merge:.rdata=.text
+@cl /Zp8 /O1i /GF /Gr /GS- /GR- /EHs-c- /LD %PlugName%.cpp /D "UNICODE" /D "_UNICODE" /link /subsystem:console /machine:AMD64 /nodefaultlib /def:%PlugName%.def kernel32.lib advapi32.lib user32.lib MSVCRT.LIB libgfl64.lib gdi32.lib %PlugName%.res /map:"..\%PlugName%.map" /out:"..\%PlugName%.dll" /merge:.rdata=.text
 
 @if exist *.exp del *.exp>nul
 @if exist *.obj del *.obj>nul
-@if exist *.lib del *.lib>nul
+@if exist %PlugName%.lib del %PlugName%.lib>nul
 @if exist *.res del *.res>nul
 @if exist *.def del *.def>nul
 @if exist *.rc  del *.rc>nul
