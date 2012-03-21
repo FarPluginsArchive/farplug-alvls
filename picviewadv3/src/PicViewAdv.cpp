@@ -21,6 +21,8 @@
 #include "plugin.hpp"
 #include <initguid.h>
 
+extern "C" int _fltused=0;
+
 // {9F25A250-45D2-45a0-90A3-5686B2A048FA}
 DEFINE_GUID(MainGuid,0x9f25a250, 0x45d2, 0x45a0, 0x90, 0xa3, 0x56, 0x86, 0xb2, 0xa0, 0x48, 0xfa);
 // {A59072DC-49BA-4598-BBFB-F7906A7A821D}
