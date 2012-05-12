@@ -1,7 +1,11 @@
 @echo off
 @cls
 
- rem поместить файл в каталог "fardev"
+ rem Поместить файл в каталог с сорцами фара, т.е. в "fardev"
+ rem Дополнительные ключи:
+ rem   пропустить обновление из svn: "ReleaseFarVCx86.bat /s"
+ rem   пропустить сборку плагинов:   "ReleaseFarVCx86.bat /p"
+ rem   и то и другое:  "ReleaseFarVCx86.bat /s /p"
 
 cd /d "%~dp0"
 
@@ -11,7 +15,7 @@ rem  ========= set install dir =======================
 set MyFarDir="G:\Far3"
  rem FExcept=1 для сборки FExcept
 set FExcept=0
- rem можно задать иной подкаталог сорцев фара, патченых например
+ rem можно задать иной подкаталог сорцев самого фара, патченых например
 set UnicodeFar=unicode_far_w
 
 rem  ========= SVN update ============================
