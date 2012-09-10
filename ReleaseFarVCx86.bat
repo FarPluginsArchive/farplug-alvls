@@ -13,8 +13,8 @@ rem  ========= set install dir =======================
 
  rem целевой каталог, который собственно и обновляем
 set MyFarDir="G:\Far3"
- rem FExcept=1 для сборки FExcept
-set FExcept=0
+ rem FExcept=0 для пропуска сборки FExcept
+set FExcept=1
  rem можно задать иной подкаталог сорцев самого фара, патченых например
 set UnicodeFar=unicode_far_w
 
@@ -142,7 +142,7 @@ rem  ========= exit ==================================
 echo 
 echo OK!
 pause>nul
-start "" /max "%MyFarDir%\far.exe" /i
+start "" /max "%MyFarDir%\far.exe"
 exit
 
 rem  ========= error =================================
