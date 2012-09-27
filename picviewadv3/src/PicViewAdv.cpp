@@ -78,7 +78,7 @@ const wchar_t *GetMsg(int MsgId)
 bool GetValue(HANDLE Handle,int Root,const TCHAR* Name,bool Default)
 {
   bool result=Default;
-  FarSettingsItem item={Root,Name,FST_QWORD};
+  FarSettingsItem item={sizeof(FarSettingsItem),Root,Name,FST_QWORD};
   if(Info.SettingsControl(Handle,SCTL_GET,0,&item))
   {
     result=item.Number?true:false;
@@ -88,7 +88,7 @@ bool GetValue(HANDLE Handle,int Root,const TCHAR* Name,bool Default)
 
 void SetValue(HANDLE Handle,int Root,const TCHAR* Name,__int64 Value)
 {
-  FarSettingsItem item={Root,Name,FST_QWORD};
+  FarSettingsItem item={sizeof(FarSettingsItem),Root,Name,FST_QWORD};
   item.Number=Value;
   Info.SettingsControl(Handle,SCTL_SET,0,&item);
 }
@@ -301,7 +301,7 @@ void UpdateInfoText(HANDLE hDlg, DialogData *data)
   Info.SendDlgMessage(hDlg,DM_SETCURSORPOS,2,&coord);
 }
 
-INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
+intptr_t WINAPI PicDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,void *Param2)
 {
   DialogData *DlgParams=(DialogData *)Info.SendDlgMessage(hDlg,DM_GETDLGDATA,0,0);
 
@@ -479,12 +479,11 @@ INT_PTR WINAPI PicDialogProc(HANDLE hDlg,int Msg,int Param1,void *Param2)
 
 void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 {
-  ViewerInfo info;
-  info.StructSize=sizeof(ViewerInfo);
+  ViewerInfo info={sizeof(ViewerInfo)};
   if(Info.ViewerControl(-1,VCTL_GETINFO,0,&info))
   {
     DialogData data;
-    PanelInfo PInfo; PInfo.StructSize=sizeof(PanelInfo);
+    PanelInfo PInfo={sizeof(PanelInfo)};
     Info.PanelControl(XPanelInfo,FCTL_GETPANELINFO,0,&PInfo);
 
     if(info.WindowSizeX==(PInfo.PanelRect.right-PInfo.PanelRect.left-1)&&PInfo.PanelType==PTYPE_QVIEWPANEL)
@@ -503,7 +502,13 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
       data.CurPanel=true;
     else
       data.CurPanel=false;
-    if(CheckName(info.FileName)||Override)
+
+    size_t s=Info.ViewerControl(-1,VCTL_GETFILENAME,0,0);
+    wchar_t *FileName=(wchar_t*)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,s*sizeof(wchar_t));
+    if (!FileName) return;
+    else Info.ViewerControl(-1,VCTL_GETFILENAME,s,FileName);
+
+    if(CheckName(FileName)||Override)
     {
       RECT ViewerRect;
       if(data.ShowingIn==VIEWER)
@@ -514,8 +519,8 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
         ViewerRect.bottom=info.WindowSizeY+1;
       }
       data.FarWindow=(HWND)Info.AdvControl(&MainGuid,ACTL_GETFARHWND,0,0);
-      size_t Size=FSF.ConvertPath(CPM_NATIVE,info.FileName,NULL,0);
-      FSF.ConvertPath(CPM_NATIVE,info.FileName,data.FileName,Size>=32768?32767:Size);
+      size_t Size=FSF.ConvertPath(CPM_NATIVE,FileName,NULL,0);
+      FSF.ConvertPath(CPM_NATIVE,FileName,data.FileName,Size>=32768?32767:Size);
 
       if(data.ShowingIn == VIEWER)
       {
@@ -558,7 +563,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[0].Type=DI_EDIT;
           DialogItems[0].X1=0; DialogItems[0].X2=info.WindowSizeX-1;
           DialogItems[0].Y1=0; DialogItems[0].Y2=0;
-          DialogItems[0].Data=info.FileName;
+          DialogItems[0].Data=FileName;
           DialogItems[1].Type=DI_USERCONTROL; DialogItems[1].Flags=DIF_FOCUS;
           DialogItems[1].X1=0; DialogItems[1].X2=info.WindowSizeX-1;
           DialogItems[1].Y1=1; DialogItems[1].Y2=info.WindowSizeY;
@@ -574,7 +579,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           DialogItems[0].Type=DI_DOUBLEBOX;
           DialogItems[0].X1=0; DialogItems[0].X2=PInfo.PanelRect.right-PInfo.PanelRect.left;
           DialogItems[0].Y1=0; DialogItems[0].Y2=PInfo.PanelRect.bottom-PInfo.PanelRect.top;
-          DialogItems[0].Data=FSF.PointToName(info.FileName);
+          DialogItems[0].Data=FSF.PointToName(FileName);
           DialogItems[1].Type=DI_USERCONTROL; DialogItems[1].Flags=DIF_FOCUS;
           DialogItems[1].X1=1; DialogItems[1].X2=PInfo.PanelRect.right-PInfo.PanelRect.left-1;
           DialogItems[1].Y1=1; DialogItems[1].Y2=PInfo.PanelRect.bottom-PInfo.PanelRect.top-2;
@@ -611,8 +616,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 
         if(!data.SelfKeys)
         {
-          struct MacroSendMacroText macro;
-          macro.StructSize=sizeof(MacroSendMacroText);
+          struct MacroSendMacroText macro={sizeof(MacroSendMacroText)};
           macro.Flags=KMFLAGS_DISABLEOUTPUT;
           macro.AKey=data.ResKey;
           wchar_t Key[256];
@@ -635,6 +639,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
       }
       //Info.RestoreScreen(hs);
     }
+    HeapFree(GetProcessHeap(),0,FileName);
   }
 }
 
@@ -656,19 +661,18 @@ void SetDefaultExtentions()
   }
 }
 
-int WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
+intptr_t WINAPI ProcessViewerEventW(const struct ProcessViewerEventInfo *pveInfo)
 {
   if(pveInfo->Event==VE_READ)
   {
     HANDLE XPanelInfo=PANEL_PASSIVE;
-    struct WindowType wi; wi.StructSize=sizeof(WindowType);
+    struct WindowType wi={sizeof(WindowType)};
     if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,(void *)&wi) && wi.Type==WTYPE_PANELS)
     {
-      struct PanelInfo pi; pi.StructSize=sizeof(PanelInfo);
+      struct PanelInfo pi={sizeof(PanelInfo)};
       Info.PanelControl(PANEL_PASSIVE,FCTL_GETPANELINFO,0,&pi);
       if (pi.PanelType==PTYPE_INFOPANEL)
         return 0;
-      pi.StructSize=sizeof(PanelInfo);
       Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&pi);
       if (pi.PanelType==PTYPE_QVIEWPANEL)
         XPanelInfo=PANEL_ACTIVE;
@@ -695,7 +699,7 @@ void WINAPI GetGlobalInfoW(struct GlobalInfo *Info)
   Info->MinFarVersion=FARMANAGERVERSION;
   Info->Version=MAKEFARVERSION(3,0,0,8,VS_RC);
   Info->Guid=MainGuid;
-  Info->Title=L"PicView Advanced";
+  Info->Title=L"PicViewAdv";
   Info->Description=L"PicView Advanced plugin for Far Manager v3.0";
   Info->Author=L"FARMail Group & Alexey Samlyukov";
 }
@@ -773,7 +777,7 @@ void WINAPI ExitFARW(const struct ExitInfo *Info)
   ExtsNum=0;
 }
 
-int WINAPI ConfigureW(const struct ConfigureInfo *cfgInfo)
+intptr_t WINAPI ConfigureW(const struct ConfigureInfo *cfgInfo)
 {
   FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
   if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
