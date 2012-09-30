@@ -619,7 +619,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           struct MacroSendMacroText macro={sizeof(MacroSendMacroText)};
           macro.Flags=KMFLAGS_DISABLEOUTPUT;
           macro.AKey=data.ResKey;
-          wchar_t Key[80];
+          wchar_t Key[80], s[80];
 
           if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_F3 && data.ShowingIn==VIEWER)
           {
@@ -631,7 +631,6 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
               macro.SequenceText=L"";
             else
             {
-              wchar_t s[80];
               FSF.sprintf(s,L"Keys('%s')",Key);
               macro.SequenceText=s;
             }
