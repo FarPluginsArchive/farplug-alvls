@@ -75,7 +75,7 @@ const wchar_t *GetMsg(int MsgId)
   return(Info.GetMsg(&MainGuid,MsgId));
 }
 
-bool GetValue(HANDLE Handle,int Root,const TCHAR* Name,bool Default)
+bool GetValue(HANDLE Handle,size_t Root,const TCHAR* Name,bool Default)
 {
   bool result=Default;
   FarSettingsItem item={sizeof(FarSettingsItem),Root,Name,FST_QWORD};
@@ -86,7 +86,7 @@ bool GetValue(HANDLE Handle,int Root,const TCHAR* Name,bool Default)
   return result;
 }
 
-void SetValue(HANDLE Handle,int Root,const TCHAR* Name,__int64 Value)
+void SetValue(HANDLE Handle,size_t Root,const TCHAR* Name,__int64 Value)
 {
   FarSettingsItem item={sizeof(FarSettingsItem),Root,Name,FST_QWORD};
   item.Number=Value;
@@ -619,16 +619,22 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
           struct MacroSendMacroText macro={sizeof(MacroSendMacroText)};
           macro.Flags=KMFLAGS_DISABLEOUTPUT;
           macro.AKey=data.ResKey;
-          wchar_t Key[256];
+          wchar_t Key[80];
 
           if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_F3 && data.ShowingIn==VIEWER)
           {
-            macro.SequenceText=L"CtrlF10 Esc";
+            macro.SequenceText=L"Keys('CtrlF10 Esc')";
           }
           else
           {
-            if(!FSF.FarInputRecordToName(&data.ResKey,Key,256)) Key[0]=0;
-            macro.SequenceText=Key;
+            if(!FSF.FarInputRecordToName(&data.ResKey,Key,80))
+              macro.SequenceText=L"";
+            else
+            {
+              wchar_t s[80];
+              FSF.sprintf(s,L"Keys('%s')",Key);
+              macro.SequenceText=s;
+            }
           }
           Info.MacroControl(0,MCTL_SENDSTRING,MSSC_POST,&macro);
         }

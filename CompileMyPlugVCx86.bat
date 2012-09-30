@@ -18,8 +18,8 @@ if "%new%"=="1" (
   xcopy "farcolor.hpp" "%~dp0%visren3\SRC" /i /y
 )
 
-cd "%~dp0%advcmp3\SRC"
-call "%~dp0%advcmp3\SRC\CompilePlugVC.bat"
+rem cd "%~dp0%advcmp3\SRC"
+rem call "%~dp0%advcmp3\SRC\CompilePlugVC.bat"
 
 cd "%~dp0%picviewadv3\SRC"
 call "%~dp0%picviewadv3\SRC\CompilePlugVC.bat"
@@ -27,7 +27,7 @@ call "%~dp0%picviewadv3\SRC\CompilePlugVC.bat"
 cd "%~dp0%visren3\SRC"
 call "%~dp0%visren3\SRC\CompilePlugVC.bat"
 
-xcopy "%~dp0advcmp3\*" "%_MyFarDir%\Plugins\AdvCmp2" /i /y
+rem xcopy "%~dp0advcmp3\*" "%_MyFarDir%\Plugins\AdvCmp" /i /y
 xcopy "%~dp0picviewadv3\*" "%_MyFarDir%\Plugins\PicViewAdv" /i /y
 xcopy "%~dp0visren3\*" "%_MyFarDir%\Plugins\VisRen" /i /y
 

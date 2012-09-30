@@ -108,7 +108,7 @@ rmdir /s /q "%~dp0plugins\farcmds\final.32W.vc" >nul
 rmdir /s /q "%~dp0plugins\filecase\final.32W.vc" >nul
 rmdir /s /q "%~dp0plugins\ftp\final.32.vc" >nul
 rmdir /s /q "%~dp0plugins\hlfviewer\final.32W.vc" >nul
-rmdir /s /q "%~dp0plugins\macroview\final.32W.vc" >nul
+rmdir /s /q "%~dp0plugins\luamacro\final.32W.vc" >nul
 rmdir /s /q "%~dp0plugins\multiarc\final.32.vc" >nul
 rmdir /s /q "%~dp0plugins\network\final.32W.vc" >nul
 rmdir /s /q "%~dp0plugins\proclist\final.32W.vc" >nul
