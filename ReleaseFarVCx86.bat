@@ -87,6 +87,7 @@ if "%FExcept%"=="1" (
 )
 
 set INSTALL=InsDir
+set FAR_WORKDIR=%MyFarDir%
 cd "%~dp0plugins"
 nmake /f makefile_all_vc
 
@@ -116,6 +117,11 @@ rmdir /s /q "%~dp0plugins\tmppanel\final.32W.vc" >nul
 rmdir /s /q "%~dp0plugins\common\CRT\obj.32.vc" >nul
 del /s /q "%~dp0plugins\common\*.lib" >nul 2>nul
 
+rem подчищаем от luafar3.dll
+del /q "%FAR_WORKDIR%\luafar3.lib" >nul 2>nul
+del /q "%FAR_WORKDIR%\luafar3.exp" >nul 2>nul
+del /q "%FAR_WORKDIR%\luafar3.pdb" >nul 2>nul
+
 if exist "%~dp0plugins\%INSTALL%\final.32W" (
   cd "%~dp0plugins\%INSTALL%\final.32W"
   del /s /q *.lib >nul 2>nul
@@ -131,6 +137,7 @@ if exist "%~dp0plugins\%INSTALL%\final.32W" (
 )
 
  rem сборка моих плагинов!
+cd "%~dp0"
 cd ..
 cd "farplug-alvls"
 call CompileMyPlugVCx86.bat

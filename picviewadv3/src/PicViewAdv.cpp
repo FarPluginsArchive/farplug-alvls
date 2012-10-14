@@ -623,7 +623,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
 
           if (data.ResKey.Event.KeyEvent.wVirtualKeyCode==VK_F3 && data.ShowingIn==VIEWER)
           {
-            macro.SequenceText=L"Keys('CtrlF10 Esc')";
+            macro.SequenceText=L"Keys([==[CtrlF10 Esc]==])";
           }
           else
           {
@@ -631,7 +631,7 @@ void GetJiggyWithIt(HANDLE XPanelInfo,bool Override, bool Force)
               macro.SequenceText=L"";
             else
             {
-              FSF.sprintf(s,L"Keys('%s')",Key);
+              FSF.sprintf(s,L"Keys([==[%s]==])",Key);
               macro.SequenceText=s;
             }
           }
@@ -727,7 +727,7 @@ void WINAPI SetStartupInfoW(const struct PluginStartupInfo *Info)
     FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
     if(::Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
     {
-      int root=0; // корень ключа
+      size_t root=0; // корень ключа
       Opt.AutomaticInViewer=GetValue(settings.Handle,root,L"AutomaticInViewer",0);
       Opt.AutomaticInQuickView=GetValue(settings.Handle,root,L"AutomaticInQuickView",1);
       Opt.BilinearResizeInViewer=GetValue(settings.Handle,root,L"BilinearResizeInViewer",1);
@@ -787,7 +787,7 @@ intptr_t WINAPI ConfigureW(const struct ConfigureInfo *cfgInfo)
   FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
   if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
   {
-    int root=0; // корень ключа
+    size_t root=0; // корень ключа
     Opt.AutomaticInViewer=GetValue(settings.Handle,root,L"AutomaticInViewer",0);
     Opt.AutomaticInQuickView=GetValue(settings.Handle,root,L"AutomaticInQuickView",1);
     Opt.BilinearResizeInViewer=GetValue(settings.Handle,root,L"BilinearResizeInViewer",1);
@@ -866,7 +866,7 @@ intptr_t WINAPI ConfigureW(const struct ConfigureInfo *cfgInfo)
       FarSettingsCreate settings={sizeof(FarSettingsCreate),MainGuid,INVALID_HANDLE_VALUE};
       if (Info.SettingsControl(INVALID_HANDLE_VALUE,SCTL_CREATE,0,&settings))
       {
-        int root=0;
+        size_t root=0;
         SetValue(settings.Handle,root,L"AutomaticInViewer",Opt.AutomaticInViewer);
         SetValue(settings.Handle,root,L"AutomaticInQuickView",Opt.AutomaticInQuickView);
         SetValue(settings.Handle,root,L"BilinearResizeInViewer",Opt.BilinearResizeInViewer);
