@@ -702,7 +702,7 @@ void WINAPI GetGlobalInfoW(struct GlobalInfo *Info)
 {
   Info->StructSize=sizeof(GlobalInfo);
   Info->MinFarVersion=FARMANAGERVERSION;
-  Info->Version=MAKEFARVERSION(3,0,0,8,VS_RC);
+  Info->Version=MAKEFARVERSION(3,0,0,8,VS_RELEASE);
   Info->Guid=MainGuid;
   Info->Title=L"PicViewAdv";
   Info->Description=L"PicView Advanced plugin for Far Manager v3.0";
