@@ -52,9 +52,11 @@ Note:
 The plugin can load GFL plugins if they are placed in the same folder as the
 plugin itself. They can be downloaded from http://www.xnview.com/.
 
-Для работы плагина требуется библиотека MSVCR100.dll - входит в 
-"Распространяемый пакет Microsoft Visual C++ 2010 (x86)", скачать
-можно с странички плагина или сайта Майкрософта.
+  Для работы плагина требуется библиотека MSVCR100.dll, входит в 
+"Распространяемый пакет Microsoft Visual C++ 2010", скачать и
+установить можно с сайта Майкрософта:
+- для х86 версии http://www.microsoft.com/ru-ru/download/details.aspx?id=5555
+- для х64 версии http://www.microsoft.com/ru-ru/download/details.aspx?id=14632
 
 Credits:
 --------
