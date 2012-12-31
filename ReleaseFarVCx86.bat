@@ -12,7 +12,7 @@ cd /d "%~dp0"
 rem  ========= set install dir =======================
 
  rem целевой каталог, который собственно и обновл€ем
-set MyFarDir="G:\Far3"
+set MyFarDir="D:\Far3"
  rem FExcept=0 дл€ пропуска сборки FExcept
 set FExcept=1
  rem можно задать иной подкаталог сорцев самого фара, патченых например
@@ -49,9 +49,18 @@ rem  ========= update ================================
 
 echo 
 echo Far 3.0 x86 Release compiling.....  OK!
-echo Update Far Manager....... kill Far.exe!
-pause
+echo Update Far Manager.......
+
+SET Choice= 
+SET /P Choice=kill Far.exe [y/n]?
+IF /I `%Choice%`==`n` goto KILLNONE
+IF /I `%Choice%`==`y` (
+echo kill Far.exe
 taskkill /f /im far.exe
+)
+
+:KILLNONE
+
 if exist "%~dp0%UnicodeFar%\Release.32.vc\Far.exe" xcopy "%~dp0%UnicodeFar%\Release.32.vc\Far.exe" "%MyFarDir%" /i /y
 if exist "%~dp0%UnicodeFar%\Release.32.vc\Far.map" xcopy "%~dp0%UnicodeFar%\Release.32.vc\Far.map" "%MyFarDir%" /i /y
 if exist "%~dp0%UnicodeFar%\Release.32.vc\FarEng.*" xcopy "%~dp0%UnicodeFar%\Release.32.vc\FarEng.*" "%MyFarDir%" /i /y

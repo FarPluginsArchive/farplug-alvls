@@ -8,10 +8,10 @@ rem  ======================== Set name and version ... =========================
 
 @set PlugName=PicViewAdv
 @set fileversion=3,0,0,8
-@set fileversion_str=3.0 build 8
+@set fileversion_str=3.0 build 8 x64
 @set MyDir=%CD%
 @set companyname=Eugene Roshal ^& FAR Group
-@set filedescription=PicView Advanced for Far Manager
+@set filedescription=PicView Advanced for Far Manager x64
 @set legalcopyright=Copyright © 2003-2012 FARMail Group
 
 rem  ==================== Make %PlugName%.def file... ==========================
@@ -80,6 +80,8 @@ rem  ==================== Compile %PlugName%.dll file...========================
 @cd %MyDir%
 @rc /l 0x4E4 %PlugName%.rc
 @cl /QIfist /Zp8 /O2 /W2 /Gy /GF /J /GS- /Gr /GR- /EHs-c- /LD %PlugName%.cpp /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS /D_CRT_NON_CONFORMING_SWPRINTFS /DUNICODE /D_UNICODE /link /subsystem:console /machine:AMD64 /noentry /nodefaultlib /def:%PlugName%.def kernel32.lib advapi32.lib user32.lib MSVCRT.LIB libgfl64.lib gdi32.lib %PlugName%.res /map:"..\%PlugName%.map" /out:"..\%PlugName%.dll" /merge:.rdata=.text
+
+copy /Y "%~dp0libgflx64\libgfl340.dll" "..\libgfl340.dll"
 
 @if exist *.exp del *.exp>nul
 @if exist *.obj del *.obj>nul
