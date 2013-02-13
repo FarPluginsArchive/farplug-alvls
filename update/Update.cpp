@@ -577,24 +577,24 @@ bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 
 bool IsStdPlug(GUID PlugGuid)
 {
-	bool ret=false;
-	if (PlugGuid==AlignGuid) ret=true;
-	else if (PlugGuid==ArcliteGuid) ret=true;
-	else if (PlugGuid==AutowrapGuid) ret=true;
-	else if (PlugGuid==BracketsGuid) ret=true;
-	else if (PlugGuid==CompareGuid) ret=true;
-	else if (PlugGuid==DrawlineGuid) ret=true;
-	else if (PlugGuid==EditcaseGuid) ret=true;
-	else if (PlugGuid==EmenuGuid) ret=true;
-	else if (PlugGuid==FarcmdsGuid) ret=true;
-	else if (PlugGuid==FarcolorerGuid) ret=true;
-	else if (PlugGuid==FilecaseGuid) ret=true;
-	else if (PlugGuid==HlfviewerGuid) ret=true;
-	else if (PlugGuid==LuamacroGuid) ret=true;
-	else if (PlugGuid==NetworkGuid) ret=true;
-	else if (PlugGuid==ProclistGuid) ret=true;
-	else if (PlugGuid==TmppanelGuid) ret=true;
-	return ret;
+	if (PlugGuid==AlignGuid ||
+			PlugGuid==ArcliteGuid ||
+			PlugGuid==AutowrapGuid ||
+			PlugGuid==BracketsGuid ||
+			PlugGuid==CompareGuid ||
+			PlugGuid==DrawlineGuid ||
+			PlugGuid==EditcaseGuid ||
+			PlugGuid==EmenuGuid ||
+			PlugGuid==FarcmdsGuid ||
+			PlugGuid==FarcolorerGuid ||
+			PlugGuid==FilecaseGuid ||
+			PlugGuid==HlfviewerGuid ||
+			PlugGuid==LuamacroGuid ||
+			PlugGuid==NetworkGuid ||
+			PlugGuid==ProclistGuid ||
+			PlugGuid==TmppanelGuid)
+		return true;
+	return false;
 }
 
 /****************************************************************************
