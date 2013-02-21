@@ -1,6 +1,11 @@
 #include <winver.h>
 #include "ver.hpp"
 
+#define IDI_TRAY                        101
+
+IDI_TRAY   ICON   "tray.ico"
+
+
 1 VERSIONINFO
 FILEVERSION MAJOR_VER,MINOR_VER,0,BUILD
 PRODUCTVERSION MAJOR_VER,MINOR_VER,0,BUILD

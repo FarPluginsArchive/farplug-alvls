@@ -420,125 +420,6 @@ bool GetUpdatesLists()
 bool DownloadUpdates();
 int GetUpdModulesInfo(bool Thread);
 
-DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
-{
-	while(WaitForSingleObject(StopEvent, 0)!=WAIT_OBJECT_0)
-	{
-		WaitForSingleObject(UnlockEvent, INFINITE);
-
-		int Download=0;
-		Download=GetDownloadStatus();
-		if (Download<0)
-		{
-			switch(Download)
-			{
-				case -1:
-					if (GetUpdatesLists())
-					{
-						SetDownloadStatus(1);
-						if (WaitEvent) SetEvent(WaitEvent);
-					}
-					break;
-				case -2:
-					DownloadUpdates();
-					break;
-			}
-		}
-		else
-		{
-			bool Time=false;
-			Time=IsTime();
-			if(Time)
-			{
-				if (GetUpdModulesInfo(true)==S_UPDATE)
-				{
-					ResetEvent(UnlockEvent);
-					SaveTime();
-					SetDownloadStatus(1);
-					DownloadUpdates();
-					if (GetDownloadStatus()==2)
-					{
-						bool Cancel=true;
-						HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-						EventStruct es={E_ASKUPD,hEvent,&Cancel};
-						Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-						WaitForSingleObject(hEvent,INFINITE);
-						CloseHandle(hEvent);
-						if(!Cancel)
-						{
-							StartUpdate(true);
-						}
-//						else
-//							Clean();
-					}
-					SetEvent(UnlockEvent);
-				}
-				else
-				{
-					SaveTime();
-//					Clean();
-				}
-/*
-				{
-					switch(CheckUpdates())
-					{
-					case S_REQUIRED:
-						{
-							ResetEvent(UnlockEvent);
-							SaveTime();
-							bool Load=(opt.Mode==2);
-							if(!Load)
-							{
-								HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-								EventStruct es={E_ASKLOAD,hEvent,&Load};
-								Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-								WaitForSingleObject(hEvent,INFINITE);
-								CloseHandle(hEvent);
-							}
-							if(Load)
-							{
-								if(DownloadUpdates(true))
-								{
-									StartUpdate(true);
-								}
-							}
-							else
-							{
-								Clean();
-							}
-							SetEvent(UnlockEvent);
-						}
-						break;
-					case S_CANTCONNECT:
-						{
-							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-							bool Cancel=false;
-							EventStruct es={E_CONNECTFAIL,hEvent,&Cancel};
-							Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-							WaitForSingleObject(hEvent,INFINITE);
-							CloseHandle(hEvent);
-							if(Cancel)
-							{
-								SaveTime();
-							}
-							Clean();
-						}
-						break;
-					case S_UPTODATE:
-						{
-							SaveTime();
-							Clean();
-						}
-						break;
-					}
-				}
-*/
-			}
-			Sleep(1000);
-		}
-	}
-	return 0;
-}
 
 bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 {
@@ -968,6 +849,12 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 
 BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 {
+	static DWORD dwTicks;
+	DWORD dwNewTicks = GetTickCount();
+	if (dwNewTicks - dwTicks < 500)
+		return false;
+	dwTicks = dwNewTicks;
+
 	struct WindowType Type={sizeof(WindowType)};
 	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
 	{
@@ -1139,7 +1026,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(MUpdate));
 //			Info.SendDlgMessage(hDlg,DM_SETFOCUS,DlgUPD,0);
-			MakeList(hDlg);
+			MakeList(hDlg,true);
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
 			break;
 		}
@@ -1232,6 +1119,129 @@ VOID ReadSettings()
 	GetPrivateProfileString(Section2,L"pass", L"",opt.ProxyPass,ARRAYSIZE(opt.ProxyPass),ipc.Config);
 }
 
+DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
+{
+	while(WaitForSingleObject(StopEvent, 0)!=WAIT_OBJECT_0)
+	{
+		WaitForSingleObject(UnlockEvent, INFINITE);
+
+		if (opt.Auto)
+		{
+			int Download=0;
+			Download=GetDownloadStatus();
+			if (Download<0)
+			{
+				switch(Download)
+				{
+					case -1:
+						if (GetUpdatesLists())
+						{
+							SetDownloadStatus(1);
+							if (WaitEvent) SetEvent(WaitEvent);
+						}
+						break;
+					case -2:
+						DownloadUpdates();
+						break;
+				}
+			}
+			else
+			{
+				bool Time=false;
+				Time=IsTime();
+				if(Time)
+				{
+					if (GetUpdModulesInfo(true)==S_UPDATE)
+					{
+						ResetEvent(UnlockEvent);
+						SaveTime();
+						SetDownloadStatus(1);
+						DownloadUpdates();
+						if (GetDownloadStatus()==2)
+						{
+							bool Cancel=true;
+							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+							EventStruct es={E_ASKUPD,hEvent,&Cancel};
+							Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
+							WaitForSingleObject(hEvent,INFINITE);
+							CloseHandle(hEvent);
+							if(!Cancel)
+							{
+								StartUpdate(true);
+							}
+//						else
+//							Clean();
+						}
+						SetEvent(UnlockEvent);
+					}
+					else
+					{
+						SaveTime();
+//					Clean();
+					}
+/*
+				{
+					switch(CheckUpdates())
+					{
+					case S_REQUIRED:
+						{
+							ResetEvent(UnlockEvent);
+							SaveTime();
+							bool Load=(opt.Mode==2);
+							if(!Load)
+							{
+								HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+								EventStruct es={E_ASKLOAD,hEvent,&Load};
+								Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
+								WaitForSingleObject(hEvent,INFINITE);
+								CloseHandle(hEvent);
+							}
+							if(Load)
+							{
+								if(DownloadUpdates(true))
+								{
+									StartUpdate(true);
+								}
+							}
+							else
+							{
+								Clean();
+							}
+							SetEvent(UnlockEvent);
+						}
+						break;
+					case S_CANTCONNECT:
+						{
+							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+							bool Cancel=false;
+							EventStruct es={E_CONNECTFAIL,hEvent,&Cancel};
+							Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
+							WaitForSingleObject(hEvent,INFINITE);
+							CloseHandle(hEvent);
+							if(Cancel)
+							{
+								SaveTime();
+							}
+							Clean();
+						}
+						break;
+					case S_UPTODATE:
+						{
+							SaveTime();
+							Clean();
+						}
+						break;
+					}
+				}
+*/
+				}
+			}
+		}
+		Sleep(1000);
+	}
+	return 0;
+}
+
 INT WINAPI GetMinFarVersionW()
 {
 #define MAKEFARVERSION(major,minor,build) ( ((major)<<8) | (minor) | ((build)<<16))
@@ -1261,7 +1271,7 @@ VOID WINAPI SetStartupInfoW(const PluginStartupInfo* psInfo)
 	ReadSettings();
 	InitializeCriticalSection(&cs);
 	StopEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
-	UnlockEvent=CreateEvent(nullptr,TRUE,opt.Auto?TRUE:FALSE,nullptr);
+	UnlockEvent=CreateEvent(nullptr,TRUE,TRUE,nullptr);
 	hThread=CreateThread(nullptr,0,ThreadProc,nullptr,0,nullptr);
 }
 
@@ -1273,12 +1283,6 @@ VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
 	pInfo->PluginMenu.Guids = &MenuGuid;
 	pInfo->PluginMenu.Strings = PluginMenuStrings;
 	pInfo->PluginMenu.Count=ARRAYSIZE(PluginMenuStrings);
-/*
-	PluginConfigStrings[0]=MSG(MCfgName);
-	pInfo->PluginConfig.Guids = &MenuGuid;
-	pInfo->PluginConfig.Strings = PluginConfigStrings;
-	pInfo->PluginConfig.Count = ARRAYSIZE(PluginConfigStrings);
-*/
 	pInfo->Flags=PF_EDITOR|PF_VIEWER|PF_DIALOG|PF_PRELOAD;
 	static LPCWSTR CommandPrefix=L"update";
 	pInfo->CommandPrefix=CommandPrefix;
@@ -1304,7 +1308,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 		return nullptr;
 	}
 	WaitEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-
+	opt.Auto=1;
 	for (;;)
 	{
 		// качаем листы с данными для обновления
@@ -1340,11 +1344,9 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 	}
 	if (ShowModulesDialog())
 		StartUpdate(false);
-	if (opt.Auto)
-	{
-		SetEvent(UnlockEvent);
-		SaveTime();
-	}
+
+	SaveTime();
+	SetEvent(UnlockEvent);
 	Clean();
 	return nullptr;
 }
