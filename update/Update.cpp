@@ -867,8 +867,8 @@ BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 			struct FarListUpdate FLU={sizeof(FarListUpdate),CurInfo->ID,Item};
 			if (Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
 			{
-				struct FarListPos FLP={sizeof(FarListPos),CurInfo->ID,-1};
-				Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
+//				struct FarListPos FLP={sizeof(FarListPos),CurInfo->ID,-1};
+//				Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
 			}
 			else
 				return FALSE;
@@ -1159,6 +1159,13 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 						DownloadUpdates();
 						if (GetDownloadStatus()==2)
 						{
+							for (;;)
+							{
+								struct WindowType Type={sizeof(WindowType)};
+								if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && (Type.Type==WTYPE_PANELS || Type.Type==WTYPE_VIEWER || Type.Type==WTYPE_EDITOR))
+									break;
+								Sleep(1000);
+							}
 							bool Cancel=true;
 							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
 							EventStruct es={E_ASKUPD,hEvent,&Cancel};
@@ -1290,10 +1297,19 @@ VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
 
 VOID WINAPI ExitFARW(ExitInfo* Info)
 {
-	SetEvent(StopEvent);
-	WaitForSingleObject(hThread,INFINITE);
+	if (hThread)
+	{
+		SetEvent(StopEvent);
+		if (WaitForSingleObject(hThread,3000)== WAIT_TIMEOUT)
+		{
+			DWORD ec = 0;
+			if (GetExitCodeThread(hThread, &ec) == STILL_ACTIVE)
+				TerminateThread(hThread, ec);
+			CloseHandle(hThread);
+			hThread=nullptr;
+		}
+	}
 	DeleteCriticalSection(&cs);
-	if (hThread) CloseHandle(hThread);
 	CloseHandle(StopEvent);
 	CloseHandle(UnlockEvent);
 	if (hRunDll) CloseHandle(hRunDll);
