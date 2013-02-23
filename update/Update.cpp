@@ -228,11 +228,9 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 					// Формируем заголовок
 					wchar_t hdrs[]=L"Content-Type: application/x-www-form-urlencoded";
 					// посылаем запрос
-					wchar_t test[]=L"command=\"test\"";
-					if (!HttpSendRequest(hRequest,hdrs,lstrlen(hdrs), test, lstrlen(test)*sizeof(wchar_t)))
+					char test[]="command=\"test\"";
+					if (!HttpSendRequest(hRequest,hdrs,lstrlenW(hdrs),(void*)test, lstrlenA(test)))
 						err=GetLastError();
-					else
-						MessageBeep(MB_OK);
 				}
 				else
 				{
