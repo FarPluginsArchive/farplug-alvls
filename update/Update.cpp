@@ -221,38 +221,39 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 
 			if (bPost)
 			{
-				PCWSTR AcceptTypes[] = {L"*/*",NULL};
+				LPCWSTR AcceptTypes[] = {L"*/*",NULL};
 				hRequest=HttpOpenRequest(hConnect,L"POST",strURL, NULL, NULL, AcceptTypes, INTERNET_FLAG_KEEP_CONNECTION, 1);
 				if (hRequest)
 				{
 					// Формируем заголовок
-					wchar_t hdrs1[]=L"Accept: */*";
-					wchar_t hdrs2[]=L"Content-Type: application/x-www-form-urlencoded";
-					if ( HttpAddRequestHeaders(hRequest,hdrs1,lstrlen(hdrs1),HTTP_ADDREQ_FLAG_ADD) &&
-							 HttpAddRequestHeaders(hRequest,hdrs2,lstrlen(hdrs2),HTTP_ADDREQ_FLAG_ADD))
-					{
-						// посылаем запрос
-						wchar_t test[]=L"command=\"test\"";
-						if (!HttpSendRequest(hRequest, NULL, 0, test, lstrlen(test)))
-							err=GetLastError();
-						else
-							MessageBeep(MB_OK);
-					}
-					else
-					{
+					wchar_t hdrs[]=L"Content-Type: application/x-www-form-urlencoded";
+					// посылаем запрос
+					wchar_t test[]=L"command=\"test\"";
+					if (!HttpSendRequest(hRequest,hdrs,lstrlen(hdrs), test, lstrlen(test)*sizeof(wchar_t)))
 						err=GetLastError();
-					}
+					else
+						MessageBeep(MB_OK);
 				}
 				else
 				{
 					err=GetLastError();
 				}
 			}
-			hRequest=HttpOpenRequest(hConnect,L"GET",strURL,L"HTTP/1.1",nullptr,0,INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_NO_CACHE_WRITE|INTERNET_FLAG_PRAGMA_NOCACHE|INTERNET_FLAG_RELOAD,1);
-
+			else
+			{
+				hRequest=HttpOpenRequest(hConnect,L"GET",strURL,L"HTTP/1.1",nullptr,0,INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_NO_CACHE_WRITE|INTERNET_FLAG_PRAGMA_NOCACHE|INTERNET_FLAG_RELOAD,1);
+				if (hRequest)
+				{
+					if (!HttpSendRequest(hRequest,nullptr,0,nullptr,0))
+						err=GetLastError();
+				}
+				else
+				{
+					err=GetLastError();
+				}
+			}
 			if (hRequest)
 			{
-				if (HttpSendRequest(hRequest,nullptr,0,nullptr,0))
 				{
 					DWORD StatCode=0;
 					DWORD sz=sizeof(StatCode);
@@ -299,10 +300,6 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 					{
 						err=ERROR_FILE_NOT_FOUND;
 					}
-				}
-				else
-				{
-					err=GetLastError();
 				}
 				InternetCloseHandle(hRequest);
 			}
@@ -602,7 +599,6 @@ wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
 		FSF.sprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
 	return Value;
 }
-
 #if 0
 char *CreatePostInfo(char *Info)
 {
@@ -659,7 +655,7 @@ int GetUpdModulesInfo(bool Thread)
 {
 	int Ret=S_UPTODATE;
 	int CountInfo=0; // количество модулей о которых загрузили информацию
-	if ((Thread?GetUpdatesLists():GetDownloadStatus()==1) && GetInstalModulesInfo() && ipc.CountModules)
+	if (GetInstalModulesInfo() && ipc.CountModules && (Thread?GetUpdatesLists():GetDownloadStatus()==1))
 	{
 /**
 [info]
