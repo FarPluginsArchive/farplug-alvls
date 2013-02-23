@@ -20,12 +20,12 @@ LPCWSTR FarRemoteSrv=L"www.farmanager.com";
 LPCWSTR FarRemotePath=L"/nightly/";
 LPCWSTR FarUpdateFile=L"update3.php";
 
-//http://plugring.farmanager.com/plugring.php?p=32
+//http://plugring.farmanager.com/command.php
 //http://plugring.farmanager.com/download.php?fid=1082
 LPCWSTR PlugRemoteSrv=L"plugring.farmanager.com";
 LPCWSTR PlugRemotePath1=L"/";
 LPCWSTR PlugRemotePath2=L"/download.php?fid=";
-LPCWSTR PlugUpdateFile=L"plugring.php";
+LPCWSTR PlugUpdateFile=L"command.php";
 
 LPCWSTR phpRequest=
 #ifdef _WIN64
@@ -181,7 +181,7 @@ struct DownloadParam
 	DOWNLOADPROCEX Proc;
 };
 
-DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile,struct DownloadParam *Param=nullptr)
+DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, bool bPost=false, struct DownloadParam *Param=nullptr)
 {
 	DWORD err=0;
 
@@ -217,8 +217,38 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile,s
 			{
 				err=GetLastError();
 			}
+			HINTERNET hRequest=NULL;
 
-			HINTERNET hRequest=HttpOpenRequest(hConnect,L"GET",strURL,L"HTTP/1.1",nullptr,0,INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_NO_CACHE_WRITE|INTERNET_FLAG_PRAGMA_NOCACHE|INTERNET_FLAG_RELOAD,1);
+			if (bPost)
+			{
+				PCWSTR AcceptTypes[] = {L"*/*",NULL};
+				hRequest=HttpOpenRequest(hConnect,L"POST",strURL, NULL, NULL, AcceptTypes, INTERNET_FLAG_KEEP_CONNECTION, 1);
+				if (hRequest)
+				{
+					// ‘ормируем заголовок
+					wchar_t hdrs1[]=L"Accept: */*";
+					wchar_t hdrs2[]=L"Content-Type: application/x-www-form-urlencoded";
+					if ( HttpAddRequestHeaders(hRequest,hdrs1,lstrlen(hdrs1),HTTP_ADDREQ_FLAG_ADD) &&
+							 HttpAddRequestHeaders(hRequest,hdrs2,lstrlen(hdrs2),HTTP_ADDREQ_FLAG_ADD))
+					{
+						// посылаем запрос
+						wchar_t test[]=L"command=\"test\"";
+						if (!HttpSendRequest(hRequest, NULL, 0, test, lstrlen(test)))
+							err=GetLastError();
+						else
+							MessageBeep(MB_OK);
+					}
+					else
+					{
+						err=GetLastError();
+					}
+				}
+				else
+				{
+					err=GetLastError();
+				}
+			}
+			hRequest=HttpOpenRequest(hConnect,L"GET",strURL,L"HTTP/1.1",nullptr,0,INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_NO_CACHE_WRITE|INTERNET_FLAG_PRAGMA_NOCACHE|INTERNET_FLAG_RELOAD,1);
 
 			if (hRequest)
 			{
@@ -289,12 +319,12 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile,s
 	return err;
 }
 
-bool DownloadFile(LPCWSTR Srv,LPCWSTR RemoteFile,LPCWSTR LocalName=nullptr)
+bool DownloadFile(LPCWSTR Srv,LPCWSTR RemoteFile,LPCWSTR LocalName=nullptr,bool bPost=false)
 {
 	wchar_t LocalFile[MAX_PATH];
 	lstrcpy(LocalFile,ipc.TempDirectory);
 	lstrcat(LocalFile,LocalName?LocalName:FSF.PointToName(RemoteFile));
-	return WinInetDownloadEx(Srv,RemoteFile,LocalFile)==0;
+	return WinInetDownloadEx(Srv,RemoteFile,LocalFile,bPost)==0;
 }
 
 bool Clean()
@@ -406,12 +436,11 @@ bool GetUpdatesLists()
 			return false;
 	}
 	// plug
-	if (0)
+	if (1)
 	{
 		lstrcpy(URL,PlugRemotePath1);
 		lstrcat(URL,PlugUpdateFile);
-		lstrcat(URL,phpRequest);
-		if (!DownloadFile(PlugRemoteSrv,URL,PlugUpdateFile))
+		if (!DownloadFile(PlugRemoteSrv,URL,PlugUpdateFile,true))
 			return false;
 	}
 	return true;
@@ -562,6 +591,53 @@ bool GetInstalModulesInfo()
 	return Ret;
 }
 
+bool StrToGuid(const wchar_t *Value,GUID &Guid)
+{
+	return (UuidFromString((unsigned short*)Value,&Guid)==RPC_S_OK)?true:false;
+}
+
+wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
+{
+	if (Value)
+		FSF.sprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
+	return Value;
+}
+
+#if 0
+char *CreatePostInfo(char *Info)
+{
+/*
+<?xml version="1.0" encoding="UTF-8" ?>
+<plugring>
+  <command code="getinfo"/>
+  <uids>
+    <uid>B076F0B0-90AE-408c-AD09-491606F09435</uid>
+    <uid>65642111-AA69-4B84-B4B8-9249579EC4FA</uid>
+  </uids>
+</plugring>
+*/
+	wchar_t HeaderHome[]=L"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><plugring><command code=\"getinfo\"/><uids>";
+	wchar_t HeaderEnd[]=L"</uids></plugring>";
+	wchar_t Body[5+36+6+1];
+	wchar_t *Buf=(wchar_t*)malloc((lstrlen(HeaderHome)+lstrlen(HeaderEnd)+ipc.CountModules*ARRAYSIZE(Body)+1)*sizeof(wchar_t));
+	if (Buf)
+	{
+		lstrcpy(Buf,HeaderHome);
+		for (size_t i=0; i<ipc.CountModules; i++)
+		{
+			if (ipc.Modules[i].Guid!=NULLGuid)
+			{
+				wchar_t p[37];
+				FSF.sprintf(Body,L"<uid>%s</uid>",GuidToStr(ipc.Modules[i].Guid,p));
+				lstrcat(Buf,Body);
+			}
+		}
+		lstrcat(Buf,HeaderEnd);
+	}
+	return Info;
+}
+#endif
+
 bool NeedUpdate(VersionInfo &Cur,VersionInfo &New)
 {
 	return (New.Major>Cur.Major) ||
@@ -570,10 +646,6 @@ bool NeedUpdate(VersionInfo &Cur,VersionInfo &New)
 	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision==Cur.Revision)&&(New.Build>Cur.Build));
 }
 
-bool StrToGuid(const wchar_t *Value,GUID &Guid)
-{
-	return (UuidFromString((unsigned short*)Value,&Guid)==RPC_S_OK)?true:false;
-}
 
 wchar_t *CharToWChar(const char *str)
 {
@@ -895,7 +967,7 @@ bool DownloadUpdates()
 			lstrcat(LocalFile,ipc.Modules[i].ArcName);
 
 			struct DownloadParam Param={&ipc.Modules[i],DownloadProcEx};
-			if (WinInetDownloadEx(i==0?FarRemoteSrv:PlugRemoteSrv,URL,LocalFile,&Param)==0)
+			if (WinInetDownloadEx(i==0?FarRemoteSrv:PlugRemoteSrv,URL,LocalFile,false,&Param)==0)
 				NeedRestart=true;
 		}
 		// прервали
