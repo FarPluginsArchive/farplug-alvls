@@ -181,6 +181,9 @@ struct DownloadParam
 	DOWNLOADPROCEX Proc;
 };
 
+char *CreatePostInfo(char *Info);
+
+
 DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, bool bPost=false, struct DownloadParam *Param=nullptr)
 {
 	DWORD err=0;
@@ -217,20 +220,29 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 			{
 				err=GetLastError();
 			}
-			HINTERNET hRequest=NULL;
+			HINTERNET hRequest=nullptr;
 
 			if (bPost)
 			{
-				LPCWSTR AcceptTypes[] = {L"*/*",NULL};
-				hRequest=HttpOpenRequest(hConnect,L"POST",strURL, NULL, NULL, AcceptTypes, INTERNET_FLAG_KEEP_CONNECTION, 1);
+				LPCWSTR AcceptTypes[] = {L"*/*",nullptr};
+				hRequest=HttpOpenRequest(hConnect,L"POST",strURL,nullptr,nullptr,AcceptTypes,INTERNET_FLAG_KEEP_CONNECTION,1);
 				if (hRequest)
 				{
 					// Формируем заголовок
-					wchar_t hdrs[]=L"Content-Type: application/x-www-form-urlencoded";
-					// посылаем запрос
-					char test[]="command=\"test\"";
-					if (!HttpSendRequest(hRequest,hdrs,lstrlenW(hdrs),(void*)test, lstrlenA(test)))
+					const wchar_t *hdrs=L"Content-Type: application/x-www-form-urlencoded";
+					// Посылаем запрос
+//#define MY_POST
+#ifdef MY_POST
+					char *post=nullptr;
+					CreatePostInfo(post);
+#else
+					char *post="command=test";
+#endif
+					if (!HttpSendRequest(hRequest,hdrs,lstrlenW(hdrs),(void*)post, lstrlenA(post)))
 						err=GetLastError();
+#ifdef MY_POST
+					free(post);
+#endif
 				}
 				else
 				{
@@ -597,7 +609,7 @@ wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
 		FSF.sprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
 	return Value;
 }
-#if 0
+
 char *CreatePostInfo(char *Info)
 {
 /*
@@ -613,24 +625,32 @@ char *CreatePostInfo(char *Info)
 	wchar_t HeaderHome[]=L"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><plugring><command code=\"getinfo\"/><uids>";
 	wchar_t HeaderEnd[]=L"</uids></plugring>";
 	wchar_t Body[5+36+6+1];
-	wchar_t *Buf=(wchar_t*)malloc((lstrlen(HeaderHome)+lstrlen(HeaderEnd)+ipc.CountModules*ARRAYSIZE(Body)+1)*sizeof(wchar_t));
-	if (Buf)
+	wchar_t *Str=(wchar_t*)malloc((lstrlen(HeaderHome)+lstrlen(HeaderEnd)+ipc.CountModules*ARRAYSIZE(Body)+1)*sizeof(wchar_t));
+	if (Str)
 	{
-		lstrcpy(Buf,HeaderHome);
+		lstrcpy(Str,HeaderHome);
 		for (size_t i=0; i<ipc.CountModules; i++)
 		{
-			if (ipc.Modules[i].Guid!=NULLGuid)
+			if (ipc.Modules[i].Guid!=NULLGuid && !IsStdPlug(ipc.Modules[i].Guid))
 			{
 				wchar_t p[37];
 				FSF.sprintf(Body,L"<uid>%s</uid>",GuidToStr(ipc.Modules[i].Guid,p));
-				lstrcat(Buf,Body);
+				lstrcat(Str,Body);
 			}
 		}
-		lstrcat(Buf,HeaderEnd);
+		lstrcat(Str,HeaderEnd);
+		size_t Size=WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),nullptr, 0,nullptr,nullptr)+1;
+		Info=(char*)malloc(Size);
+		if (Info)
+		{
+			WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),Info,static_cast<int>(Size-1),nullptr, nullptr);
+			Info[Size-1]=0;
+		}
+		free(Str);
 	}
+//MessageBoxA(0,Info,0,MB_OK);
 	return Info;
 }
-#endif
 
 bool NeedUpdate(VersionInfo &Cur,VersionInfo &New)
 {
