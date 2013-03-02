@@ -291,13 +291,13 @@ public:
 			*out_stream = NULL;
 			return S_OK;
 		}
-/*
+
 		//Create directory for file item
 		wchar_t dir_path[MAX_PATH];
 		lstrcpy(dir_path,_absolute_path);
 		*(StrRChr(dir_path,nullptr,L'\\'))=0;
 		SHCreateDirectoryEx(NULL, dir_path, NULL);
-*/
+
 		//Open write stream
 		CComPtr<IStream> write_stream;
 		hr = SHCreateStreamOnFileEx(_absolute_path, STGM_CREATE | STGM_WRITE, FILE_ATTRIBUTE_NORMAL, TRUE, NULL, &write_stream);
