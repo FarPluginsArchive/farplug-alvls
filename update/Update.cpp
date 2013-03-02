@@ -1223,7 +1223,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					{
 						if (vk==VK_RETURN)
 						{
-							int Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
 							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
 							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
 							if (Cur)
