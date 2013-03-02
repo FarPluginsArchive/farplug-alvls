@@ -995,7 +995,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 			}
 			else
 			{
-				if (Cur->Flags&INFO) FSF.sprintf(Buf,L"Far %d.%d.%d, downloads %s \"%s\"",Cur->MinFarVersion.Major,Cur->MinFarVersion.Minor,Cur->MinFarVersion.Build,Cur->Downloads[0]?Cur->Downloads:L"0",Cur->ArcName);
+				if (Cur->Flags&INFO) FSF.sprintf(Buf,L"<Far %d.%d.%d, downloads %s> \"%s\"",Cur->MinFarVersion.Major,Cur->MinFarVersion.Minor,Cur->MinFarVersion.Build,Cur->Downloads[0]?Cur->Downloads:L"0",Cur->ArcName);
 				else lstrcpy(Buf,MSG(MIsNonInfo));
 			}
 		}
@@ -1353,7 +1353,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 		Time=IsTime();
 		if (Time)
 		{
-			WaitForSingleObject(UnlockEvent,5*1000); // притормозим
+			WaitForSingleObject(UnlockEvent,3*1000); // притормозим
 			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
 			if (GetUpdModulesInfo())
 			{
