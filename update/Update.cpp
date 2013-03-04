@@ -37,6 +37,7 @@ enum MODULEINFOFLAG {
 	ERR      = 0x001,  // ошибка
 	STD      = 0x002,  // стандартный плаг
 	ANSI     = 0x004,  // ansi-плаг
+	SKIP     = 0x008,  // запретим обновление
 	UPD      = 0x010,  // будем обновлять
 	INFO     = 0x020,  // загрузили в базу инфо об обновлении
 	ARC      = 0x040,  // загрузили архив для обновления
@@ -343,7 +344,7 @@ bool IsTime()
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 	EnterCriticalSection(&cs);
-	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay;
+	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay||(st.wHour-SavedTime.wHour)>=6;
 	LeaveCriticalSection(&cs);
 	return Result;
 }
@@ -419,7 +420,7 @@ VOID StartUpdate(bool Thread)
 				WaitForSingleObject(hEvent,INFINITE);
 				CloseHandle(hEvent);
 			}
-			SaveTime();
+//			SaveTime();
 		}
 		else
 		{
@@ -693,17 +694,17 @@ wchar_t *CharToWChar(const char *str)
 	return buf;
 }
 
-bool GetUpdModulesInfo()
+void GetUpdModulesInfo()
 {
 	if (!GetInstalModulesInfo())
 	{
 		SetStatus(S_CANTGETINFO);
-		return false;
+		return;
 	}
 	if (!GetUpdatesLists())
 	{
 		SetStatus(S_CANTCONNECT);
-		return false;
+		return;
 	}
 	int Ret=S_UPTODATE;
 	int CountInfo=0; // количество модулей о которых загрузили информацию
@@ -930,10 +931,10 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			}
 		}
 	}
+	SetStatus(CountInfo?Ret:S_CANTGETINFO);
 	DeleteFile(ipc.FarUpdateList);
 	DeleteFile(ipc.PlugUpdateList);
-	SetStatus(CountInfo?Ret:S_CANTGETINFO);
-	return CountInfo?true:false;
+	return;
 }
 
 enum {
@@ -954,7 +955,9 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	if ((Cur->Flags&STD) || !(Cur->Flags&INFO) || (GetStatus()==S_COMPLET && !(Cur->Flags&ARC)))
 		Item.Flags|=LIF_GRAYED;
 	if (Cur->Flags&UPD)
-		Item.Flags|=LIF_CHECKED;
+		Item.Flags|=(LIF_CHECKED|0x2b);
+	else if (Cur->Flags&SKIP)
+		Item.Flags|=(LIF_CHECKED|0x2d);
 	wchar_t Ver[80], NewVer[80], Status[80];
 	FSF.sprintf(Ver,L"%d.%d.%d.%d",Cur->Version.Major,Cur->Version.Minor,Cur->Version.Revision,Cur->Version.Build);
 	if (Cur->Flags&INFO)
@@ -1294,14 +1297,31 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 									{
 										if (!(FLGI.Item.Flags&LIF_GRAYED))
 										{
-											(FLGI.Item.Flags&LIF_CHECKED)?(FLGI.Item.Flags&= ~LIF_CHECKED):(FLGI.Item.Flags|=LIF_CHECKED);
+											if (vk==VK_INSERT)
+											{
+												if (LOWORD(FLGI.Item.Flags)==0x2b) FLGI.Item.Flags&= ~(LIF_CHECKED|0x2b);
+												else { FLGI.Item.Flags&= ~(LIF_CHECKED|0x2d); FLGI.Item.Flags|=(LIF_CHECKED|0x2b); }
+											}
+											else
+											{
+												if (LOWORD(FLGI.Item.Flags)==0x2d) FLGI.Item.Flags&= ~(LIF_CHECKED|0x2d);
+												else { FLGI.Item.Flags&= ~(LIF_CHECKED|0x2b); FLGI.Item.Flags|=(LIF_CHECKED|0x2d); }
+											}
 											struct FarListUpdate FLU={sizeof(FarListUpdate)};
 											FLU.Index=FLGI.ItemIndex;
 											FLU.Item=FLGI.Item;
 											if (Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
 											{
-												if (Cur->Flags&UPD) Cur->Flags&=~UPD;
-												else Cur->Flags|=UPD;
+												if (vk==VK_INSERT)
+												{
+													if (Cur->Flags&UPD) Cur->Flags&=~UPD;
+													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; }
+												}
+												else
+												{
+													if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
+													else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; }
+												}
 												FLP.SelectPos++;
 												Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
 												return true;
@@ -1481,7 +1501,8 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 		{
 			WaitForSingleObject(UnlockEvent,3*1000); // притормозим, чтоб загрузились все плаги
 			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
-			if (GetUpdModulesInfo())
+			GetUpdModulesInfo();
+			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
 			{
 				if (WaitEvent) SetEvent(WaitEvent);
 				if (GetStatus()==S_UPDATE && opt.Auto)
@@ -1510,9 +1531,8 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 				SaveTime();
 			}
 			SetEvent(UnlockEvent);
-			continue;
 		}
-		if (GetStatus()==S_DOWNLOAD)
+		else if (GetStatus()==S_DOWNLOAD)
 		{
 			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
 			DownloadUpdates();
