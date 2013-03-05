@@ -7,7 +7,8 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
  Плагин предназначен для обновления Far Manager v.3.0.2927 (и новее) и плагинов к нему с ~PlugRinG~@http://plugring.farmanager.com/@.
 
- Пользовательские настройки загружаются плагином при старте из файла "update.dll.config", для примера приложен файл "update.dll.example.config".
+ Основные настройки плагина находятся в главном меню Far Manager - "Параметры плагинов".
+Дополнительные настройки загружаются плагином из файла "update.dll.config", для примера приложен файл "update.dll.example.config".
 
  Для работы плагина необходима библиотека 7z.dll, плагин ищет ее в своем каталоге или в папке "%ProgramFiles%\7-Zip".
 
@@ -24,10 +25,15 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
 ^ В диалоге плагина доступны следующие клавиши
 
- #Ins#         - отметить модуль для обновления
+ #Ins, Num +#  - отметить модуль для обновления
 
- #Space#       - запретить обновление модуля
+ #Del, Num -#  - запретить обновление модуля
 
  #Ctrl-PgUp#   - открыть каталог плагина
 
  #Shift-Enter# - открыть топик плагина на PlugRinG
+
+
+@Config
+$^ #Update#
+$^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#

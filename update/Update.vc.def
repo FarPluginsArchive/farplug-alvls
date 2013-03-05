@@ -7,3 +7,4 @@ EXPORTS
  ProcessSynchroEventW
  ExitFARW
  RestartFARW
+ ConfigureW

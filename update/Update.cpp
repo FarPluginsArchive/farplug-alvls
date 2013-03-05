@@ -74,6 +74,8 @@ struct IPC
 	wchar_t FarUpdateList[MAX_PATH];
 	wchar_t PlugUpdateList[MAX_PATH];
 	//---
+	DWORD DelAfterInstall;
+	//---
 	ModuleInfo *Modules;
 	size_t CountModules;
 } ipc;
@@ -89,7 +91,7 @@ struct OPT
 {
 	DWORD Auto;
 	DWORD Wait;
-	bool bUseProxy;
+	DWORD Proxy;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
 	wchar_t ProxyPass[MAX_PATH];
@@ -99,12 +101,17 @@ struct OPT
 enum STATUS
 {
 	S_NONE=0,
-	S_CANTGETINFO,
-	S_CANTCONNECT,
+	S_CANTGETINSTALINFO,
+	S_CANTCREATTMP,
+	S_CANTGETFARLIST,
+	S_CANTGETPLUGLIST,
+	S_CANTGETFARUPDINFO,
+	S_CANTGETPLUGUPDINFO,
 	S_UPTODATE,
 	S_UPDATE,
 	S_DOWNLOAD,
-	S_COMPLET
+	S_CANTCONNECT,
+	S_COMPLET,
 };
 
 enum EVENT
@@ -123,7 +130,7 @@ struct EventStruct
 };
 
 bool NeedRestart=false;
-int Status=S_NONE;
+DWORD Status=S_NONE;
 
 SYSTEMTIME SavedTime;
 
@@ -139,17 +146,17 @@ CRITICAL_SECTION cs;
 PluginStartupInfo Info;
 FarStandardFunctions FSF;
 
-void SetStatus(int Set)
+void SetStatus(DWORD Set)
 {
 	EnterCriticalSection(&cs);
 	Status=Set;
 	LeaveCriticalSection(&cs);
 }
 
-int GetStatus()
+DWORD GetStatus()
 {
 	EnterCriticalSection(&cs);
-	int ret=Status;
+	DWORD ret=Status;
 	LeaveCriticalSection(&cs);
 	return ret;
 }
@@ -193,7 +200,7 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 	DWORD err=0;
 
 	DWORD ProxyType=INTERNET_OPEN_TYPE_DIRECT;
-	if(opt.bUseProxy)
+	if(opt.Proxy)
 		ProxyType=*opt.ProxyName?INTERNET_OPEN_TYPE_PROXY:INTERNET_OPEN_TYPE_PRECONFIG;
 
 	HINTERNET hInternet=InternetOpen(L"Mozilla/5.0 (compatible; FAR Update)",ProxyType,opt.ProxyName,nullptr,0);
@@ -202,7 +209,7 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 		HINTERNET hConnect=InternetConnect(hInternet,strSrv,INTERNET_DEFAULT_HTTP_PORT,nullptr,nullptr,INTERNET_SERVICE_HTTP,0,1);
 		if(hConnect)
 		{
-			if(opt.bUseProxy && *opt.ProxyName)
+			if(opt.Proxy && *opt.ProxyName)
 			{
 				if(*opt.ProxyUser)
 				{
@@ -433,10 +440,13 @@ VOID StartUpdate(bool Thread)
 	}
 }
 
-bool GetUpdatesLists()
+DWORD GetUpdatesLists()
 {
-	bool Ret=true;
+	DWORD Ret=S_NONE;
 	CreateDirectory(ipc.TempDirectory,nullptr);
+	if (GetFileAttributes(ipc.TempDirectory)==INVALID_FILE_ATTRIBUTES)
+		return S_CANTCREATTMP;
+
 	wchar_t URL[1024];
 	// far
 	{
@@ -444,17 +454,17 @@ bool GetUpdatesLists()
 		lstrcat(URL,FarUpdateFile);
 		lstrcat(URL,phpRequest);
 		if (!DownloadFile(FarRemoteSrv,URL,FarUpdateFile,false))
-			Ret=false;
+			Ret=S_CANTGETFARLIST;
 	}
 	// plug
-	if (Ret)
+	if (Ret==S_NONE)
 	{
 		lstrcpy(URL,PlugRemotePath1);
 		lstrcat(URL,PlugUpdateFile);
 		if (!DownloadFile(PlugRemoteSrv,URL,PlugUpdateFile,true))
-			Ret=false;
+			Ret=S_CANTGETPLUGLIST;
 	}
-	if (!Ret)
+	if (Ret)
 	{
 		DeleteFile(ipc.FarUpdateList);
 		DeleteFile(ipc.PlugUpdateList);
@@ -552,9 +562,9 @@ wchar_t *GetModuleDir(const wchar_t *Path, wchar_t *Dir)
 	return Dir;
 }
 
-bool GetInstalModulesInfo()
+DWORD GetInstalModulesInfo()
 {
-	bool Ret=true;
+	DWORD Ret=S_NONE;
 	FreeModulesInfo();
 
 	size_t PluginsCount=Info.PluginsControl(INVALID_HANDLE_VALUE,PCTL_GETPLUGINS,0,0);
@@ -601,7 +611,7 @@ bool GetInstalModulesInfo()
 				}
 				else
 				{
-					Ret=false;
+					Ret=S_CANTGETINSTALINFO;
 					break;
 				}
 			}
@@ -615,9 +625,9 @@ bool GetInstalModulesInfo()
 		}
 		free(Plugins);
 	}
-	else Ret=false;
+	else Ret=S_CANTGETINSTALINFO;
 
-	if (!Ret) FreeModulesInfo();
+	if (Ret) FreeModulesInfo();
 	return Ret;
 }
 
@@ -631,6 +641,25 @@ wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
 	if (Value)
 		FSF.sprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
 	return Value;
+}
+
+bool CmpListGuid(wchar_t *ListGuid,GUID &Guid)
+{
+	bool ret=false;
+	if (ListGuid&&ListGuid[0])
+	{
+		wchar_t guid[37];
+		GuidToStr(Guid,guid);
+		for (wchar_t *p=ListGuid; *p; p+=(36+1))
+		{
+			if (!FSF.LStrnicmp(p,guid,36))
+			{
+				ret=true;
+				break;
+			}
+		}
+	}
+	return ret;
 }
 
 char *CreatePostInfo(char *cInfo)
@@ -696,18 +725,29 @@ wchar_t *CharToWChar(const char *str)
 
 void GetUpdModulesInfo()
 {
-	if (!GetInstalModulesInfo())
+	DWORD Ret;
+	if (Ret=GetInstalModulesInfo())
 	{
-		SetStatus(S_CANTGETINFO);
+		SetStatus(Ret);
 		return;
 	}
-	if (!GetUpdatesLists())
+	if (Ret=GetUpdatesLists())
 	{
-		SetStatus(S_CANTCONNECT);
+		SetStatus(Ret);
 		return;
 	}
-	int Ret=S_UPTODATE;
-	int CountInfo=0; // количество модулей о которых загрузили информацию
+	Ret=S_UPTODATE;
+//	int CountInfo=0; // количество модулей о которых загрузили информацию
+
+	wchar_t *ListGuid=nullptr;
+	PluginSettings settings(MainGuid, Info.SettingsControl);
+	int len=lstrlen(settings.Get(0,L"Skip",L""));
+	if (len>36)
+	{
+		ListGuid=(wchar_t*)malloc((len+1)*sizeof(wchar_t));
+		if (ListGuid)
+			settings.Get(0,L"Skip",ListGuid,len+1,L"");
+	}
 
 /**
 [info]
@@ -741,14 +781,19 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			if (ipc.Modules[0].ArcName[0])
 			{
 				ipc.Modules[0].Flags|=INFO;
-				CountInfo++;
-				if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion))
+//				CountInfo++;
+
+				if (CmpListGuid(ListGuid,(GUID&)NULLGuid))
+					ipc.Modules[0].Flags|=SKIP;
+				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion))
 				{
 					ipc.Modules[0].Flags|=UPD;
 					Ret=S_UPDATE;
 				}
 			}
 		}
+		if (Ret!=S_UPTODATE && Ret!=S_UPDATE)
+			Ret=S_CANTGETFARUPDINFO;
 	}
 /**
 <?xml version="1.0" encoding="UTF-8"?>
@@ -770,6 +815,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 </plugins>
 **/
 	// остальные плаги
+	if (Ret!=S_CANTGETFARUPDINFO)
 	{
 		TiXmlDocument doc;
 		char path[MAX_PATH];
@@ -916,8 +962,11 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 									if (CurInfo->ArcName[0])
 									{
 										CurInfo->Flags|=INFO;
-										CountInfo++;
-										if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
+//										CountInfo++;
+
+										if (CmpListGuid(ListGuid,CurInfo->Guid))
+											CurInfo->Flags|=SKIP;
+										else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
 										{
 											CurInfo->Flags|=UPD;
 											Ret=S_UPDATE;
@@ -930,8 +979,12 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 				}
 			}
 		}
+		if (Ret!=S_UPTODATE && Ret!=S_UPDATE)
+			Ret=S_CANTGETPLUGUPDINFO;
 	}
-	SetStatus(CountInfo?Ret:S_CANTGETINFO);
+//	SetStatus(CountInfo?Ret:S_CANTGETINFO);
+	SetStatus(Ret);
+	if (ListGuid) free(ListGuid);
 	DeleteFile(ipc.FarUpdateList);
 	DeleteFile(ipc.PlugUpdateList);
 	return;
@@ -1117,7 +1170,7 @@ bool DownloadUpdates()
 		if (ipc.Modules[i].Flags&INFO)
 			bUPD=true; // что-то есть, но не отмечено
 	}
-	// что-то скачали
+	// если что-то скачали
 	if (NeedRestart)
 	{
 		SetStatus(S_COMPLET);
@@ -1129,12 +1182,13 @@ bool DownloadUpdates()
 				Info.SendDlgMessage(hDlg,DN_UPDDLG,0,0);
 		}
 	}
-/*
 	else
 	{
-		if (bUPD) SetDownloadStatus(1);
+		// тогда восстановим статус
+		if (bUPD)
+			SetStatus(S_UPTODATE);
 	}
-*/
+
 	return true;
 }
 
@@ -1281,7 +1335,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				{
 					if (Param1==DlgLIST)
 					{
-						if (vk==VK_INSERT || vk==VK_SPACE)
+						if (vk==VK_INSERT || vk==VK_DELETE || vk==VK_ADD || vk==VK_SUBTRACT)
 						{
 							if (GetStatus()!=S_DOWNLOAD)
 							{
@@ -1297,7 +1351,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 									{
 										if (!(FLGI.Item.Flags&LIF_GRAYED))
 										{
-											if (vk==VK_INSERT)
+											if (vk==VK_INSERT || vk==VK_ADD)
 											{
 												if (LOWORD(FLGI.Item.Flags)==0x2b) FLGI.Item.Flags&= ~(LIF_CHECKED|0x2b);
 												else { FLGI.Item.Flags&= ~(LIF_CHECKED|0x2d); FLGI.Item.Flags|=(LIF_CHECKED|0x2b); }
@@ -1312,7 +1366,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 											FLU.Item=FLGI.Item;
 											if (Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
 											{
-												if (vk==VK_INSERT)
+												if (vk==VK_INSERT || vk==VK_ADD)
 												{
 													if (Cur->Flags&UPD) Cur->Flags&=~UPD;
 													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; }
@@ -1353,7 +1407,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 							{
 								if (Cur->pid[0])
 								{
-									wchar_t url[MAX_PATH]=L"http://plugring.farmanager.com/plugin.php?pid=";
+									wchar_t url[128]=L"http://plugring.farmanager.com/plugin.php?pid=";
 									lstrcat(url,Cur->pid);
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
 									return true;
@@ -1424,9 +1478,28 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					}
 					case S_COMPLET:
 					{
+						PluginSettings settings(MainGuid, Info.SettingsControl);
+						wchar_t guid[38]; //36 гуид + 1 на разделитель
+						wchar_t *buf=(wchar_t*)malloc(ipc.CountModules*ARRAYSIZE(guid)*sizeof(wchar_t));
+						if (buf) buf[0]=0;
+						bool ret=false,skip=false;
 						for(size_t i=0; i<ipc.CountModules; i++)
+						{
 							if (ipc.Modules[i].Flags&UPD)
-								return true;
+								ret=true;
+							if (buf && (ipc.Modules[i].Flags&SKIP))
+							{
+								skip=true;
+								ret=true;
+								lstrcat(buf,GuidToStr(ipc.Modules[i].Guid,guid));
+								lstrcat(buf,L",");
+							}
+						}
+						if (skip)
+							settings.Set(0,L"Skip",buf);
+						if(buf) free(buf);
+						if (ret)
+							return true;
 					}
 					default: return false;
 				}
@@ -1471,24 +1544,89 @@ bool ShowModulesDialog()
 
 VOID ReadSettings()
 {
-	lstrcpy(ipc.PluginModule,Info.ModuleName);
-	lstrcat(lstrcpy(ipc.Config,ipc.PluginModule),L".config");
+	PluginSettings settings(MainGuid, Info.SettingsControl);
+	opt.Auto=settings.Get(0,L"Auto",0);
+	opt.Wait=settings.Get(0,L"Wait",10);
+	ipc.DelAfterInstall=settings.Get(0,L"Delete",1);
+	opt.Proxy=settings.Get(0,L"Proxy",0);
+	settings.Get(0,L"Srv",opt.ProxyName,ARRAYSIZE(opt.ProxyName),L"");
+	settings.Get(0,L"User",opt.ProxyUser,ARRAYSIZE(opt.ProxyUser),L"");
+	settings.Get(0,L"Pass",opt.ProxyPass,ARRAYSIZE(opt.ProxyPass),L"");
 
-	LPCWSTR Section1=L"update";
-	opt.Auto=GetPrivateProfileInt(Section1,L"auto",0,ipc.Config);
 	wchar_t Buf[MAX_PATH];
-	GetPrivateProfileString(Section1,L"dir",L"%TEMP%\\FarUpdate\\",Buf,ARRAYSIZE(Buf),ipc.Config);
+	settings.Get(0,L"Dir",Buf,ARRAYSIZE(Buf),L"%TEMP%\\FarUpdate\\");
 	ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
 	if (ipc.TempDirectory[lstrlen(ipc.TempDirectory)-1]!=L'\\') lstrcat(ipc.TempDirectory,L"\\");
 	lstrcat(lstrcpy(ipc.FarUpdateList,ipc.TempDirectory),FarUpdateFile);
 	lstrcat(lstrcpy(ipc.PlugUpdateList,ipc.TempDirectory),PlugUpdateFile);
+	lstrcpy(ipc.PluginModule,Info.ModuleName);
+	lstrcat(lstrcpy(ipc.Config,ipc.PluginModule),L".config");
+}
 
-	LPCWSTR Section2=L"connect";
-	opt.Wait=GetPrivateProfileInt(Section2,L"wait",10,ipc.Config);
-	opt.bUseProxy=GetPrivateProfileInt(Section2,L"proxy",0,ipc.Config) == 1;
-	GetPrivateProfileString(Section2,L"srv",L"",opt.ProxyName,ARRAYSIZE(opt.ProxyName),ipc.Config);
-	GetPrivateProfileString(Section2,L"user", L"",opt.ProxyUser,ARRAYSIZE(opt.ProxyUser),ipc.Config);
-	GetPrivateProfileString(Section2,L"pass", L"",opt.ProxyPass,ARRAYSIZE(opt.ProxyPass),ipc.Config);
+intptr_t Config()
+{
+	wchar_t num[64]=L"10";
+
+	struct FarDialogItem DialogItems[] = {
+		//			Type	X1	Y1	X2	Y2				Selected	History	Mask	Flags	Data	MaxLen	UserParam
+		/* 0*/{DI_DOUBLEBOX,  3, 1,60,12, 0, 0, 0,                  0,MSG(MName),0,0},
+		/* 1*/{DI_CHECKBOX,   5, 2, 0, 0, opt.Auto, 0, 0,   DIF_FOCUS, MSG(MCfgAuto),0,0},
+		/* 2*/{DI_FIXEDIT,    5, 3, 7, 0, 0, 0, L"999",  DIF_MASKEDIT,FSF.itoa(opt.Wait,num,10),0,0},
+		/* 3*/{DI_TEXT,       9, 3,58, 0, 0, 0, 0,                  0,MSG(MCfgWait),0,0},
+		/* 4*/{DI_CHECKBOX,   5, 4, 0, 0, ipc.DelAfterInstall,0, 0, 0,MSG(MCfgDelete),0,0},
+		/* 5*/{DI_CHECKBOX,   5, 5, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
+		/* 6*/{DI_TEXT,       9, 6,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
+		/* 7*/{DI_EDIT,      24, 6,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
+		/* 8*/{DI_TEXT,       9, 7,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
+		/* 9*/{DI_EDIT,      24, 7,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
+		/*10*/{DI_PSWEDIT,   43, 7,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
+		/*11*/{DI_TEXT,       5, 8,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
+		/*12*/{DI_EDIT,       5, 9,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,ipc.TempDirectory,0,0},
+		/*13*/{DI_TEXT,      -1,10, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
+		/*14*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
+		/*15*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
+	};
+
+	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,14,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
+
+	intptr_t ret=0;
+	if (hDlg != INVALID_HANDLE_VALUE)
+	{
+		if (Info.DialogRun(hDlg)==14)
+		{
+			opt.Auto=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,1,0);
+			opt.Wait=FSF.atoi((const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+			if (!opt.Wait) opt.Wait=10;
+			ipc.DelAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,4,0);
+			opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,5,0);
+			if (opt.Proxy)
+			{
+				lstrcpy(opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,7,0));
+				lstrcpy(opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,9,0));
+				lstrcpy(opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,10,0));
+			}
+			wchar_t Buf[MAX_PATH];
+			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,12,0));
+			if (Buf[0]==0) lstrcpy(Buf,L"%TEMP%\\FarUpdate\\");
+			ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
+			if (ipc.TempDirectory[lstrlen(ipc.TempDirectory)-1]!=L'\\') lstrcat(ipc.TempDirectory,L"\\");
+			lstrcat(lstrcpy(ipc.FarUpdateList,ipc.TempDirectory),FarUpdateFile);
+			lstrcat(lstrcpy(ipc.PlugUpdateList,ipc.TempDirectory),PlugUpdateFile);
+
+			PluginSettings settings(MainGuid, Info.SettingsControl);
+			settings.Set(0,L"Auto",opt.Auto);
+			settings.Set(0,L"Wait",opt.Wait);
+			settings.Set(0,L"Delete",ipc.DelAfterInstall);
+			settings.Set(0,L"Proxy",opt.Proxy);
+			settings.Set(0,L"Srv",opt.ProxyName);
+			settings.Set(0,L"User",opt.ProxyUser);
+			settings.Set(0,L"Pass",opt.ProxyPass);
+			settings.Set(0,L"Dir",ipc.TempDirectory);
+			ret=1;
+		}
+		Info.DialogFree(hDlg);
+	}
+	return ret;
 }
 
 DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
@@ -1499,7 +1637,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 		Time=IsTime();
 		if (Time)
 		{
-			WaitForSingleObject(UnlockEvent,3*1000); // притормозим, чтоб загрузились все плаги
+			WaitForSingleObject(UnlockEvent,3*1000); // притормозим, чтоб гарантировано загрузились все плаги
 			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
 			GetUpdModulesInfo();
 			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
@@ -1709,9 +1847,18 @@ VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
 	pInfo->PluginMenu.Guids = &MenuGuid;
 	pInfo->PluginMenu.Strings = PluginMenuStrings;
 	pInfo->PluginMenu.Count=ARRAYSIZE(PluginMenuStrings);
+	PluginConfigStrings[0]=MSG(MName);
+	pInfo->PluginConfig.Guids = &CfgMenuGuid;
+	pInfo->PluginConfig.Strings = PluginConfigStrings;
+	pInfo->PluginConfig.Count = ARRAYSIZE(PluginConfigStrings);
 	pInfo->Flags=PF_EDITOR|PF_VIEWER|PF_DIALOG|PF_PRELOAD;
 	static LPCWSTR CommandPrefix=L"update";
 	pInfo->CommandPrefix=CommandPrefix;
+}
+
+intptr_t WINAPI ConfigureW(const ConfigureInfo* Info)
+{
+	return Config();
 }
 
 VOID WINAPI ExitFARW(ExitInfo* Info)
@@ -1951,7 +2098,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										{
 											TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
 											mprintf(L"OK\n");
-											if(GetPrivateProfileInt(L"update",L"delete",1,ipc.Config))
+											if(ipc.DelAfterInstall)
 											{
 												DeleteFile(local_arc);
 											}
