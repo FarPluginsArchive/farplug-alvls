@@ -1453,10 +1453,15 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 						}
 						else if (vk==0x48) // VK_H
 						{
-							opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
-							PluginSettings settings(MainGuid, Info.SettingsControl);
-							settings.Set(0,L"ShowDisable",opt.ShowDisable);
-							MakeList(hDlg,true);
+							if (GetStatus()!=S_DOWNLOAD)
+							{
+								opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
+								PluginSettings settings(MainGuid, Info.SettingsControl);
+								settings.Set(0,L"ShowDisable",opt.ShowDisable);
+								MakeList(hDlg,true);
+							}
+							else
+								MessageBeep(MB_OK);
 							return true;
 						}
 					}
@@ -1600,7 +1605,7 @@ intptr_t Config()
 		/* 1*/{DI_CHECKBOX,   5, 2, 0, 0, opt.Auto, 0, 0,   DIF_FOCUS, MSG(MCfgAuto),0,0},
 		/* 2*/{DI_FIXEDIT,    5, 3, 7, 0, 0, 0, L"999",  DIF_MASKEDIT,FSF.itoa(opt.Wait,num,10),0,0},
 		/* 3*/{DI_TEXT,       9, 3,58, 0, 0, 0, 0,                  0,MSG(MCfgWait),0,0},
-		/* 4*/{DI_CHECKBOX,   5, 4, 0, 0, ipc.DelAfterInstall,0, 0, 0,MSG(MCfgDelete),0,0},
+		/* 4*/{DI_CHECKBOX,   5, 4, 0, 0, ipc.DelAfterInstall,0, 0,DIF_3STATE,MSG(MCfgDelete),0,0},
 		/* 5*/{DI_CHECKBOX,   5, 5, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
 		/* 6*/{DI_TEXT,       9, 6,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
 		/* 7*/{DI_EDIT,      24, 6,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
@@ -2139,7 +2144,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										{
 											TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
 											mprintf(L"OK\n");
-											if(ipc.DelAfterInstall)
+											if (ipc.DelAfterInstall==1 || (ipc.DelAfterInstall==2&&i==0))
 											{
 												DeleteFile(local_arc);
 											}
