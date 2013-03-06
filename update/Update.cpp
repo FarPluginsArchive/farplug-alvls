@@ -91,10 +91,12 @@ struct OPT
 {
 	DWORD Auto;
 	DWORD Wait;
+	DWORD ShowDisable;
 	DWORD Proxy;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
 	wchar_t ProxyPass[MAX_PATH];
+	wchar_t TempDirectory[MAX_PATH]; // для показа "как есть"
 } opt;
 
 
@@ -120,6 +122,7 @@ enum EVENT
 	E_CONNECTFAIL,
 	E_DOWNLOADED,
 	E_ASKUPD,
+	E_LOADPLUGINS,
 };
 
 struct EventStruct
@@ -1027,7 +1030,7 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	else
 		Status[0]=0;
 
-	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %8.8s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x25AA:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x25AA:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
 	Item.Text=Buf;
 }
 
@@ -1080,23 +1083,26 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 	for (size_t i=0,ii=0; i<ipc.CountModules; i++)
 	{
 		ModuleInfo *Cur=&ipc.Modules[i];
-		wchar_t Buf[MAX_PATH];
-		struct FarListItem Item={};
-		MakeListItem(Cur,Buf,Item);
-		struct FarList List={sizeof(FarList)};
-		List.ItemsNumber=1;
-		List.Items=&Item;
-
-		// если удачно добавили элемент...
-		if (Info.SendDlgMessage(hDlg,DM_LISTADD,DlgLIST,&List))
+		if ((Cur->Flags&INFO)||opt.ShowDisable)
 		{
-			Cur->ID=(DWORD)ii;
-			// ... то ассоциируем данные с элементом листа
-			struct FarListItemData Data={sizeof(FarListItemData)};
-			Data.Index=ii++;
-			Data.DataSize=sizeof(Cur);
-			Data.Data=&Cur;
-			Info.SendDlgMessage(hDlg,DM_LISTSETDATA,DlgLIST,&Data);
+			wchar_t Buf[MAX_PATH];
+			struct FarListItem Item={};
+			MakeListItem(Cur,Buf,Item);
+			struct FarList List={sizeof(FarList)};
+			List.ItemsNumber=1;
+			List.Items=&Item;
+
+			// если удачно добавили элемент...
+			if (Info.SendDlgMessage(hDlg,DM_LISTADD,DlgLIST,&List))
+			{
+				Cur->ID=(DWORD)ii;
+				// ... то ассоциируем данные с элементом листа
+				struct FarListItemData Data={sizeof(FarListItemData)};
+				Data.Index=ii++;
+				Data.DataSize=sizeof(Cur);
+				Data.Data=&Cur;
+				Info.SendDlgMessage(hDlg,DM_LISTSETDATA,DlgLIST,&Data);
+			}
 		}
 	}
 	if (bSetCurPos)
@@ -1445,6 +1451,14 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 								return true;
 							}
 						}
+						else if (vk==0x48) // VK_H
+						{
+							opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
+							PluginSettings settings(MainGuid, Info.SettingsControl);
+							settings.Set(0,L"ShowDisable",opt.ShowDisable);
+							MakeList(hDlg,true);
+							return true;
+						}
 					}
 				}
 			}
@@ -1465,6 +1479,8 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 		/************************************************************************/
 
 		case DN_CLOSE:
+		{
+			bool ret=false;
 			if (Param1==DlgUPD)
 			{
 				switch(GetStatus())
@@ -1473,42 +1489,51 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					case S_UPTODATE:
 					{
 						SetStatus(S_DOWNLOAD);
-//						SetEvent(UnlockEvent);
 						return false;
 					}
 					case S_COMPLET:
 					{
-						PluginSettings settings(MainGuid, Info.SettingsControl);
-						wchar_t guid[38]; //36 гуид + 1 на разделитель
-						wchar_t *buf=(wchar_t*)malloc(ipc.CountModules*ARRAYSIZE(guid)*sizeof(wchar_t));
-						if (buf) buf[0]=0;
-						bool ret=false,skip=false;
 						for(size_t i=0; i<ipc.CountModules; i++)
-						{
 							if (ipc.Modules[i].Flags&UPD)
-								ret=true;
-							if (buf && (ipc.Modules[i].Flags&SKIP))
 							{
-								skip=true;
 								ret=true;
-								lstrcat(buf,GuidToStr(ipc.Modules[i].Guid,guid));
-								lstrcat(buf,L",");
+								break;
 							}
-						}
-						if (skip)
-							settings.Set(0,L"Skip",buf);
-						if(buf) free(buf);
-						if (ret)
-							return true;
+						break;
 					}
-					default: return false;
+					default:
+						return false;
 				}
 			}
 			else if (Param1==DlgCANCEL || Param1==-1)
 			{
 				SetStatus(S_NONE);
+				ret=true;
 			}
-			break;
+			if (ret)
+			{
+				PluginSettings settings(MainGuid, Info.SettingsControl);
+				wchar_t guid[38]; //36 гуид + 1 на разделитель
+				wchar_t *buf=(wchar_t*)malloc(ipc.CountModules*ARRAYSIZE(guid)*sizeof(wchar_t));
+				if (buf) buf[0]=0;
+				bool Set=false;
+				for(size_t i=0; i<ipc.CountModules; i++)
+				{
+					if (buf && (ipc.Modules[i].Flags&SKIP))
+					{
+						Set=true;
+						lstrcat(buf,GuidToStr(ipc.Modules[i].Guid,guid));
+						lstrcat(buf,L",");
+					}
+				}
+				if (Set)
+					settings.Set(0,L"Skip",buf);
+				else
+					settings.DeleteValue(0,L"Skip");
+				if(buf) free(buf);
+			}
+			return ret;
+		}
 	}
 	return Info.DefDlgProc(hDlg,Msg,Param1,Param2);
 }
@@ -1518,7 +1543,7 @@ bool ShowModulesDialog()
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
 		/* 0*/{DI_DOUBLEBOX,  0, 0,80,24, 0, 0, 0,                             0, MSG(MAvailableUpdates),0,0},
-		/* 1*/{DI_LISTBOX,    1, 1,79,15, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
+		/* 1*/{DI_LISTBOX,    1, 1,78,15, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
 		/* 2*/{DI_TEXT,      -1,16, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
 		/* 3*/{DI_TEXT,       2,17,78,17,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 4*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
@@ -1552,9 +1577,11 @@ VOID ReadSettings()
 	settings.Get(0,L"Srv",opt.ProxyName,ARRAYSIZE(opt.ProxyName),L"");
 	settings.Get(0,L"User",opt.ProxyUser,ARRAYSIZE(opt.ProxyUser),L"");
 	settings.Get(0,L"Pass",opt.ProxyPass,ARRAYSIZE(opt.ProxyPass),L"");
+	opt.ShowDisable=settings.Get(0,L"ShowDisable",1);
 
 	wchar_t Buf[MAX_PATH];
 	settings.Get(0,L"Dir",Buf,ARRAYSIZE(Buf),L"%TEMP%\\FarUpdate\\");
+	lstrcpy(opt.TempDirectory,Buf);
 	ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
 	if (ipc.TempDirectory[lstrlen(ipc.TempDirectory)-1]!=L'\\') lstrcat(ipc.TempDirectory,L"\\");
 	lstrcat(lstrcpy(ipc.FarUpdateList,ipc.TempDirectory),FarUpdateFile);
@@ -1581,7 +1608,7 @@ intptr_t Config()
 		/* 9*/{DI_EDIT,      24, 7,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
 		/*10*/{DI_PSWEDIT,   43, 7,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
 		/*11*/{DI_TEXT,       5, 8,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
-		/*12*/{DI_EDIT,       5, 9,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,ipc.TempDirectory,0,0},
+		/*12*/{DI_EDIT,       5, 9,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,opt.TempDirectory,0,0},
 		/*13*/{DI_TEXT,      -1,10, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
 		/*14*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
 		/*15*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
@@ -1608,6 +1635,7 @@ intptr_t Config()
 			wchar_t Buf[MAX_PATH];
 			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,12,0));
 			if (Buf[0]==0) lstrcpy(Buf,L"%TEMP%\\FarUpdate\\");
+			lstrcpy(opt.TempDirectory,Buf);
 			ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
 			if (ipc.TempDirectory[lstrlen(ipc.TempDirectory)-1]!=L'\\') lstrcat(ipc.TempDirectory,L"\\");
 			lstrcat(lstrcpy(ipc.FarUpdateList,ipc.TempDirectory),FarUpdateFile);
@@ -1621,7 +1649,7 @@ intptr_t Config()
 			settings.Set(0,L"Srv",opt.ProxyName);
 			settings.Set(0,L"User",opt.ProxyUser);
 			settings.Set(0,L"Pass",opt.ProxyPass);
-			settings.Set(0,L"Dir",ipc.TempDirectory);
+			settings.Set(0,L"Dir",opt.TempDirectory);
 			ret=1;
 		}
 		Info.DialogFree(hDlg);
@@ -1638,6 +1666,15 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 		if (Time)
 		{
 			WaitForSingleObject(UnlockEvent,3*1000); // притормозим, чтоб гарантировано загрузились все плаги
+/*
+			{
+				HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+				EventStruct es={E_LOADPLUGINS,hEvent};
+				Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
+				WaitForSingleObject(hEvent,INFINITE);
+				CloseHandle(hEvent);
+			}
+*/
 			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
 			GetUpdModulesInfo();
 			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
@@ -1944,6 +1981,10 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 			EventStruct* es=reinterpret_cast<EventStruct*>(pInfo->Param);
 			switch(es->Event)
 			{
+			case E_LOADPLUGINS:
+				SetEvent(reinterpret_cast<HANDLE>(es->Data));
+				break;
+
 			case E_ASKUPD:
 				{
 					if (ShowModulesDialog())
