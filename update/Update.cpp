@@ -103,7 +103,7 @@ struct OPT
 enum STATUS
 {
 	S_NONE=0,
-	S_CANTGETINSTALINFO,
+	S_CANTGETINSTALLINFO,
 	S_CANTCREATTMP,
 	S_CANTGETFARLIST,
 	S_CANTGETPLUGLIST,
@@ -118,11 +118,9 @@ enum STATUS
 
 enum EVENT
 {
-	E_ASKLOAD,
-	E_CONNECTFAIL,
-	E_DOWNLOADED,
-	E_ASKUPD,
 	E_LOADPLUGINS,
+	E_ASKUPD,
+	E_ASKEXIT,
 };
 
 struct EventStruct
@@ -425,7 +423,7 @@ VOID StartUpdate(bool Thread)
 			else
 			{
 				HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-				EventStruct es={E_DOWNLOADED,hEvent};
+				EventStruct es={E_ASKEXIT,hEvent};
 				Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
 				WaitForSingleObject(hEvent,INFINITE);
 				CloseHandle(hEvent);
@@ -565,7 +563,7 @@ wchar_t *GetModuleDir(const wchar_t *Path, wchar_t *Dir)
 	return Dir;
 }
 
-DWORD GetInstalModulesInfo()
+DWORD GetInstallModulesInfo()
 {
 	DWORD Ret=S_NONE;
 	FreeModulesInfo();
@@ -614,7 +612,7 @@ DWORD GetInstalModulesInfo()
 				}
 				else
 				{
-					Ret=S_CANTGETINSTALINFO;
+					Ret=S_CANTGETINSTALLINFO;
 					break;
 				}
 			}
@@ -628,7 +626,7 @@ DWORD GetInstalModulesInfo()
 		}
 		free(Plugins);
 	}
-	else Ret=S_CANTGETINSTALINFO;
+	else Ret=S_CANTGETINSTALLINFO;
 
 	if (Ret) FreeModulesInfo();
 	return Ret;
@@ -729,7 +727,7 @@ wchar_t *CharToWChar(const char *str)
 void GetUpdModulesInfo()
 {
 	DWORD Ret;
-	if (Ret=GetInstalModulesInfo())
+	if (Ret=GetInstallModulesInfo())
 	{
 		SetStatus(Ret);
 		return;
@@ -740,7 +738,6 @@ void GetUpdModulesInfo()
 		return;
 	}
 	Ret=S_UPTODATE;
-//	int CountInfo=0; // количество модулей о которых загрузили информацию
 
 	wchar_t *ListGuid=nullptr;
 	PluginSettings settings(MainGuid, Info.SettingsControl);
@@ -784,7 +781,6 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			if (ipc.Modules[0].ArcName[0])
 			{
 				ipc.Modules[0].Flags|=INFO;
-//				CountInfo++;
 
 				if (CmpListGuid(ListGuid,(GUID&)NULLGuid))
 					ipc.Modules[0].Flags|=SKIP;
@@ -965,7 +961,6 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 									if (CurInfo->ArcName[0])
 									{
 										CurInfo->Flags|=INFO;
-//										CountInfo++;
 
 										if (CmpListGuid(ListGuid,CurInfo->Guid))
 											CurInfo->Flags|=SKIP;
@@ -985,7 +980,6 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 		if (Ret!=S_UPTODATE && Ret!=S_UPDATE)
 			Ret=S_CANTGETPLUGUPDINFO;
 	}
-//	SetStatus(CountInfo?Ret:S_CANTGETINFO);
 	SetStatus(Ret);
 	if (ListGuid) free(ListGuid);
 	DeleteFile(ipc.FarUpdateList);
@@ -1088,6 +1082,8 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 			wchar_t Buf[MAX_PATH];
 			struct FarListItem Item={};
 			MakeListItem(Cur,Buf,Item);
+			if (!bSetCurPos && ii==0)
+				Item.Flags|=LIF_SELECTED;
 			struct FarList List={sizeof(FarList)};
 			List.ItemsNumber=1;
 			List.Items=&Item;
@@ -1118,12 +1114,14 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 
 BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 {
-	static DWORD dwTicks;
-	DWORD dwNewTicks = GetTickCount();
-	if (dwNewTicks - dwTicks < 500)
-		return false;
-	dwTicks = dwNewTicks;
-
+	if (Percent<100)
+	{
+		static DWORD dwTicks;
+		DWORD dwNewTicks = GetTickCount();
+		if (dwNewTicks - dwTicks < 500)
+			return false;
+		dwTicks = dwNewTicks;
+	}
 	struct WindowType Type={sizeof(WindowType)};
 	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
 	{
@@ -1133,13 +1131,11 @@ BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 			wchar_t Buf[MAX_PATH];
 			struct FarListItem Item={};
 			MakeListItem(CurInfo,Buf,Item,Percent);
+			intptr_t CurPos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,nullptr);
+			if (CurInfo->ID==CurPos)
+				Item.Flags|=LIF_SELECTED;
 			struct FarListUpdate FLU={sizeof(FarListUpdate),CurInfo->ID,Item};
-			if (Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
-			{
-//				struct FarListPos FLP={sizeof(FarListPos),CurInfo->ID,-1};
-//				Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
-			}
-			else
+			if (!Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
 				return FALSE;
 		}
 	}
@@ -1411,14 +1407,21 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 						{
 							if (vk==VK_RETURN)
 							{
-								if (Cur->pid[0])
+								if (Cur->ID==0 || (Cur->Flags&STD))
+								{
+									wchar_t url[]=L"http://www.farmanager.com/nightly.php";
+									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+									return true;
+								}
+								else if (Cur->pid[0])
 								{
 									wchar_t url[128]=L"http://plugring.farmanager.com/plugin.php?pid=";
 									lstrcat(url,Cur->pid);
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
 									return true;
 								}
-								MessageBeep(MB_OK);
+								else
+									MessageBeep(MB_OK);
 							}
 							else if (vk==VK_INSERT)
 							{
@@ -1476,7 +1479,6 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 		{
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(MUpdate));
-//			Info.SendDlgMessage(hDlg,DM_SETFOCUS,DlgUPD,0);
 			MakeList(hDlg,true);
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
 			break;
@@ -1517,7 +1519,6 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			}
 			if (ret)
 			{
-				PluginSettings settings(MainGuid, Info.SettingsControl);
 				wchar_t guid[38]; //36 гуид + 1 на разделитель
 				wchar_t *buf=(wchar_t*)malloc(ipc.CountModules*ARRAYSIZE(guid)*sizeof(wchar_t));
 				if (buf) buf[0]=0;
@@ -1531,6 +1532,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 						lstrcat(buf,L",");
 					}
 				}
+				PluginSettings settings(MainGuid, Info.SettingsControl);
 				if (Set)
 					settings.Set(0,L"Skip",buf);
 				else
@@ -1597,7 +1599,7 @@ VOID ReadSettings()
 
 intptr_t Config()
 {
-	wchar_t num[64]=L"10";
+	wchar_t num[64];
 
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2				Selected	History	Mask	Flags	Data	MaxLen	UserParam
@@ -1670,18 +1672,21 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 		Time=IsTime();
 		if (Time)
 		{
-			WaitForSingleObject(UnlockEvent,3*1000); // притормозим, чтоб гарантировано загрузились все плаги
-/*
+			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
+			if (opt.Auto)
 			{
 				HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
 				EventStruct es={E_LOADPLUGINS,hEvent};
 				Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
 				WaitForSingleObject(hEvent,INFINITE);
 				CloseHandle(hEvent);
+				GetUpdModulesInfo();
 			}
-*/
-			ResetEvent(UnlockEvent); // защита от повторного вызова из F11
-			GetUpdModulesInfo();
+			else
+			{
+				if (WaitForSingleObject(WaitEvent,0)==WAIT_TIMEOUT)
+					GetUpdModulesInfo();
+			}
 			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
 			{
 				if (WaitEvent) SetEvent(WaitEvent);
@@ -1719,131 +1724,6 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 			SetEvent(UnlockEvent);
 		}
 		Sleep(1000);
-
-#if 0
-		WaitForSingleObject(UnlockEvent, INFINITE);
-
-		if (opt.Auto)
-		{
-			int Download=0;
-			Download=GetDownloadStatus();
-			if (Download<0)
-			{
-				switch(Download)
-				{
-					case -1:
-						if (GetUpdatesLists())
-						{
-							SetDownloadStatus(1);
-							if (WaitEvent) SetEvent(WaitEvent);
-						}
-						break;
-					case -2:
-						DownloadUpdates();
-						break;
-				}
-			}
-			else
-			{
-				bool Time=false;
-				Time=IsTime();
-				if(Time)
-				{
-					if (GetUpdModulesInfo(true)==S_UPDATE)
-					{
-						ResetEvent(UnlockEvent);
-						SaveTime();
-						SetDownloadStatus(1);
-						DownloadUpdates();
-						if (GetDownloadStatus()==2)
-						{
-							for (;;)
-							{
-								struct WindowType Type={sizeof(WindowType)};
-								if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && (Type.Type==WTYPE_PANELS || Type.Type==WTYPE_VIEWER || Type.Type==WTYPE_EDITOR))
-									break;
-								Sleep(1000);
-							}
-							bool Cancel=true;
-							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-							EventStruct es={E_ASKUPD,hEvent,&Cancel};
-							Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-							WaitForSingleObject(hEvent,INFINITE);
-							CloseHandle(hEvent);
-							if(!Cancel)
-							{
-								StartUpdate(true);
-							}
-//						else
-//							Clean();
-						}
-						SetEvent(UnlockEvent);
-					}
-					else
-					{
-						SaveTime();
-//					Clean();
-					}
-/*
-				{
-					switch(CheckUpdates())
-					{
-					case S_REQUIRED:
-						{
-							ResetEvent(UnlockEvent);
-							SaveTime();
-							bool Load=(opt.Mode==2);
-							if(!Load)
-							{
-								HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-								EventStruct es={E_ASKLOAD,hEvent,&Load};
-								Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-								WaitForSingleObject(hEvent,INFINITE);
-								CloseHandle(hEvent);
-							}
-							if(Load)
-							{
-								if(DownloadUpdates(true))
-								{
-									StartUpdate(true);
-								}
-							}
-							else
-							{
-								Clean();
-							}
-							SetEvent(UnlockEvent);
-						}
-						break;
-					case S_CANTCONNECT:
-						{
-							HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-							bool Cancel=false;
-							EventStruct es={E_CONNECTFAIL,hEvent,&Cancel};
-							Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
-							WaitForSingleObject(hEvent,INFINITE);
-							CloseHandle(hEvent);
-							if(Cancel)
-							{
-								SaveTime();
-							}
-							Clean();
-						}
-						break;
-					case S_UPTODATE:
-						{
-							SaveTime();
-							Clean();
-						}
-						break;
-					}
-				}
-*/
-				}
-			}
-		}
-		Sleep(1000);
-#endif
 	}
 	return 0;
 }
@@ -1893,7 +1773,7 @@ VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
 	pInfo->PluginConfig.Guids = &CfgMenuGuid;
 	pInfo->PluginConfig.Strings = PluginConfigStrings;
 	pInfo->PluginConfig.Count = ARRAYSIZE(PluginConfigStrings);
-	pInfo->Flags=PF_EDITOR|PF_VIEWER|PF_DIALOG|PF_PRELOAD;
+	pInfo->Flags=PF_EDITOR|PF_VIEWER|PF_PRELOAD;
 	static LPCWSTR CommandPrefix=L"update";
 	pInfo->CommandPrefix=CommandPrefix;
 }
@@ -1941,11 +1821,37 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 		// т.к. сервак часто в ауте, будем ждать коннекта не более n сек
 		if (WaitForSingleObject(WaitEvent,opt.Wait*1000)!=WAIT_OBJECT_0)
 		{
-			LPCWSTR Items[]={MSG(MName),MSG(MCantConnect)};
+			const wchar_t *err;
+			switch(GetStatus())
+			{
+				case S_CANTGETINSTALLINFO:
+					err=MSG(MCantGetInstallInfo);
+					break;
+				case S_CANTCREATTMP:
+					err=MSG(MCantCreatTmp);
+					break;
+				case S_CANTGETFARLIST:
+					err=MSG(MCantGetFarList);
+					break;
+				case S_CANTGETPLUGLIST:
+					err=MSG(MCantGetPlugList);
+					break;
+				case S_CANTGETFARUPDINFO:
+					err=MSG(MCantGetFarUpdInfo);
+					break;
+				case S_CANTGETPLUGUPDINFO:
+					err=MSG(MCantGetPlugUpdInfo);
+					break;
+				default:
+					err=MSG(MCantConnect);
+					break;
+			}
+			LPCWSTR Items[]={MSG(MName),err};
 			if (Info.Message(&MainGuid, nullptr, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 2))
 			{
 				CloseHandle(WaitEvent);
 				opt.Auto=Auto; // восстановим
+				if (!opt.Auto) SaveTime();
 				return nullptr;
 			}
 		}
@@ -1957,23 +1863,13 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 	}
 
 	NeedRestart=false;
-/*
-	if (!GetUpdModulesInfo(false))
-	{
-		// если не удалось получить информацию
-		LPCWSTR Items[]={MSG(MName),MSG(MCantGetInfo)};
-		Info.Message(&MainGuid, nullptr, FMSG_MB_OK|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items),1);
-		Clean();
-		return nullptr;
-	}
-*/
 	if (ShowModulesDialog())
 		StartUpdate(false);
 
 	SaveTime();
-//	SetEvent(UnlockEvent);
-	Clean();
 	opt.Auto=Auto; // восстановим
+	Clean();
+
 	return nullptr;
 }
 
@@ -1981,54 +1877,30 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 {
 	switch(pInfo->Event)
 	{
-	case SE_COMMONSYNCHRO:
+		case SE_COMMONSYNCHRO:
 		{
 			EventStruct* es=reinterpret_cast<EventStruct*>(pInfo->Param);
 			switch(es->Event)
 			{
-			case E_LOADPLUGINS:
-				SetEvent(reinterpret_cast<HANDLE>(es->Data));
-				break;
-
-			case E_ASKUPD:
+				case E_LOADPLUGINS:
+				{
+					SetEvent(reinterpret_cast<HANDLE>(es->Data));
+					break;
+				}
+				case E_ASKUPD:
 				{
 					if (ShowModulesDialog())
 						*es->Result=false;
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
-/*
-			case E_ASKLOAD:
-				{
-					wchar_t Str[128];
-					DWORD NewMajor,NewMinor,NewBuild;
-					GetNewModuleVersion(Str,NewMajor,NewMinor,NewBuild);
-					LPCWSTR Items[]={MSG(MName),MSG(MAvailableUpdates),L"\x1",Str,L"\x1",MSG(MAsk)};
-					if(!Info.Message(&MainGuid, nullptr, FMSG_MB_YESNO|FMSG_LEFTALIGN, nullptr, Items, ARRAYSIZE(Items), 2))
-					{
-						*es->Result=true;
-					}
-					SetEvent(reinterpret_cast<HANDLE>(es->Data));
-				}
-				break;
-			case E_CONNECTFAIL:
-				{
-					LPCWSTR Items[]={MSG(MName),MSG(MCantConnect)};
-					if(Info.Message(&MainGuid, nullptr, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 2))
-					{
-						*es->Result=true;
-					}
-					SetEvent(reinterpret_cast<HANDLE>(es->Data));
-				}
-				break;
-*/
-			case E_DOWNLOADED:
+				case E_ASKEXIT:
 				{
 					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
 					Info.Message(&MainGuid, nullptr, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
+					break;
 				}
-				break;
 			}
 		}
 		break;
