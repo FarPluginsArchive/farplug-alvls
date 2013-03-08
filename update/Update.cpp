@@ -391,7 +391,7 @@ VOID StartUpdate(bool Thread)
 		if (!Thread)
 		{
 			LPCWSTR Items[]={MSG(MName),MSG(MCantCompleteUpd),MSG(MExitFAR)};
-			Info.Message(&MainGuid, nullptr, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+			Info.Message(&MainGuid,&MsgCantCompleteUpdGuid, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 		}
 		else
 		{
@@ -437,7 +437,7 @@ VOID StartUpdate(bool Thread)
 			if (!Thread)
 			{
 				LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
-				Info.Message(&MainGuid, nullptr, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 1);
+				Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 			}
 			else
 			{
@@ -454,7 +454,7 @@ VOID StartUpdate(bool Thread)
 			if (!Thread)
 			{
 				LPCWSTR Items[]={MSG(MName),MSG(MCantCreateProcess)};
-				Info.Message(&MainGuid, nullptr, FMSG_MB_OK|FMSG_ERRORTYPE, nullptr, Items, ARRAYSIZE(Items), 1);
+				Info.Message(&MainGuid,&MsgCantCreateProcessGuid, FMSG_MB_OK|FMSG_ERRORTYPE, nullptr, Items, ARRAYSIZE(Items), 0);
 			}
 		}
 	}
@@ -1043,7 +1043,7 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	else
 		Status[0]=0;
 
-	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x25AA:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
 	Item.Text=Buf;
 }
 
@@ -1866,7 +1866,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 					break;
 			}
 			LPCWSTR Items[]={MSG(MName),err};
-			if (Info.Message(&MainGuid, nullptr, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 2))
+			if (Info.Message(&MainGuid,&MsgErrGuid, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 0))
 			{
 				CloseHandle(WaitEvent);
 				opt.Auto=Auto; // восстановим
@@ -1915,14 +1915,14 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 				case E_EXIT:
 				{
 					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
-					Info.Message(&MainGuid, nullptr, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+					Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
 				case E_CANTCOMPLETE:
 				{
 					LPCWSTR Items[]={MSG(MName),MSG(MCantCompleteUpd),MSG(MExitFAR)};
-					Info.Message(&MainGuid, nullptr, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+					Info.Message(&MainGuid,&MsgCantCompleteUpdGuid, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
