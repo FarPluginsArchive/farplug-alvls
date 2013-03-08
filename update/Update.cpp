@@ -206,9 +206,9 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 		ProxyType=*opt.ProxyName?INTERNET_OPEN_TYPE_PROXY:INTERNET_OPEN_TYPE_PRECONFIG;
 
 	HINTERNET hInternet=InternetOpen(L"Mozilla/5.0 (compatible; FAR Update)",ProxyType,opt.ProxyName,nullptr,0);
-	if(hInternet) 
+	if(hInternet)
 	{
-		HINTERNET hConnect=InternetConnect(hInternet,strSrv,INTERNET_DEFAULT_HTTP_PORT,nullptr,nullptr,INTERNET_SERVICE_HTTP,0,1);
+		HINTERNET hConnect=InternetConnect(hInternet,strSrv,INTERNET_DEFAULT_HTTP_PORT,nullptr,nullptr,INTERNET_SERVICE_HTTP,0,0);
 		if(hConnect)
 		{
 			if(opt.Proxy && *opt.ProxyName)
@@ -272,59 +272,69 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 			}
 			if (hRequest)
 			{
+				DWORD StatCode=0;
+				DWORD sz=sizeof(StatCode);
+				if (HttpQueryInfo(hRequest,HTTP_QUERY_STATUS_CODE|HTTP_QUERY_FLAG_NUMBER,&StatCode,&sz,nullptr)
+						&& StatCode!=HTTP_STATUS_NOT_FOUND && (StatCode==HTTP_STATUS_OK || StatCode==HTTP_STATUS_REDIRECT))
 				{
-					DWORD StatCode=0;
-					DWORD sz=sizeof(StatCode);
-					if(HttpQueryInfo(hRequest,HTTP_QUERY_STATUS_CODE|HTTP_QUERY_FLAG_NUMBER,&StatCode,&sz,nullptr) && StatCode!=HTTP_STATUS_NOT_FOUND)
+					HANDLE hFile=CreateFile(strFile,GENERIC_WRITE,FILE_SHARE_READ,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+					if(hFile!=INVALID_HANDLE_VALUE)
 					{
-						HANDLE hFile=CreateFile(strFile,GENERIC_WRITE,FILE_SHARE_READ,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
-						if(hFile!=INVALID_HANDLE_VALUE)
+						DWORD Size=-1;
+						sz=sizeof(Size);
+						HttpQueryInfo(hRequest,HTTP_QUERY_CONTENT_LENGTH|HTTP_QUERY_FLAG_NUMBER,&Size,&sz,nullptr);
+						DWORD ReadOk=true;
+						if(Size!=GetFileSize(hFile,nullptr))
 						{
-							DWORD Size=-1;
-							sz=sizeof(Size);
-							HttpQueryInfo(hRequest,HTTP_QUERY_CONTENT_LENGTH|HTTP_QUERY_FLAG_NUMBER,&Size,&sz,nullptr);
-							if(Size!=GetFileSize(hFile,nullptr))
+							SetEndOfFile(hFile);
+							UINT BytesDone=0;
+							DWORD dwBytesRead;
+							BYTE Data[2048];
+							while((ReadOk=InternetReadFile(hRequest,Data,sizeof(Data),&dwBytesRead))!=0 && dwBytesRead)
 							{
-								SetEndOfFile(hFile);
-								UINT BytesDone=0;
-								DWORD dwBytesRead;
-								BYTE Data[2048];
-								while(InternetReadFile(hRequest,Data,sizeof(Data),&dwBytesRead)!=0 && dwBytesRead)
+								BytesDone+=dwBytesRead;
+								if (Param)
 								{
-									BytesDone+=dwBytesRead;
-									if (Param)
-									{
-										if (GetStatus()!=S_DOWNLOAD)
-											break;
-										if (Size && Size!=-1)
-											Param->Proc(Param->CurInfo,BytesDone*100/Size);
-									}
-									DWORD dwWritten=0;
-									if (!WriteFile(hFile,Data,dwBytesRead,&dwWritten,nullptr))
-									{
-										err=GetLastError();
+									if (GetStatus()!=S_DOWNLOAD)
 										break;
-									}
+									if (Size && Size!=-1)
+										Param->Proc(Param->CurInfo,BytesDone*100/Size);
+								}
+								DWORD dwWritten=0;
+								if (!WriteFile(hFile,Data,dwBytesRead,&dwWritten,nullptr))
+								{
+									err=GetLastError();
+									break;
 								}
 							}
-							CloseHandle(hFile);
 						}
-						else
+						CloseHandle(hFile);
+						if (!ReadOk)
 						{
-							err=GetLastError();
+							err=ERROR_READ_FAULT;
+							DeleteFile(strFile);
 						}
 					}
 					else
 					{
-						err=ERROR_FILE_NOT_FOUND;
+						err=GetLastError();
 					}
+				}
+				else
+				{
+					err=ERROR_FILE_NOT_FOUND;
 				}
 				InternetCloseHandle(hRequest);
 			}
 			InternetCloseHandle(hConnect);
 		}
+		else
+			err=GetLastError();
 		InternetCloseHandle(hInternet);
 	}
+	else
+		err=GetLastError();
+
 	if (Param)
 	{
 		if (err) { Param->CurInfo->Flags|=ERR; Param->CurInfo->Flags&= ~UPD; }

@@ -71,7 +71,7 @@ lng: lng.templ
 	@tools\lng.generator.exe -nc -i lng.ini -ol "$(OUTDIR)" lng.templ
 	@copy /b $(DLLNAME).example.config $(OUTDIR)\$(DLLNAME).example.config
 	@copy /b update_ru.hlf $(OUTDIR)\update_ru.hlf
-	@copy /b 7z.dll.$(_ODB_) $(OUTDIR)\7z.dll
+	@copy /b changelog $(OUTDIR)\changelog
 
 $(PCH): headers.cpp
 	@echo making precompiled headers
