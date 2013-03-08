@@ -396,3 +396,29 @@ bool extract(HMODULE seven_dll,const wchar_t* src_path, const wchar_t* dst_path)
 	}
 	return ret;
 }
+
+/**
+ * Get 7z application path from registry
+ * \param key base parent key
+ * \return path
+ */
+wchar_t *get_7z_path(const HKEY key, wchar_t *path)
+{
+	HKEY reg_key;
+	if (RegOpenKeyEx(key, L"Software\\7-Zip", 0, KEY_READ, &reg_key) == ERROR_SUCCESS)
+	{
+		DWORD data_len = 0;
+		if (RegQueryValueEx(reg_key, L"Path", NULL, NULL, NULL, &data_len) != ERROR_SUCCESS)
+		{
+			RegCloseKey(reg_key);
+			path[0]=0;
+		}
+		else
+		{
+			if (RegQueryValueEx(reg_key, L"Path", NULL, NULL, reinterpret_cast<LPBYTE>(&path[0]), &data_len) != ERROR_SUCCESS)
+				path[0]=0;
+			RegCloseKey(reg_key);
+		}
+	}
+	return path;
+}

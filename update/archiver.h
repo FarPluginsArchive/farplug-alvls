@@ -28,3 +28,5 @@
  * \param dst_path destination path
  */
 bool extract(HMODULE seven_dll,const wchar_t* src_path, const wchar_t* dst_path);
+
+wchar_t *get_7z_path(const HKEY key, wchar_t *path);

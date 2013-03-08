@@ -1694,7 +1694,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 			else
 			{
 				if (WaitForSingleObject(WaitEvent,0)==WAIT_TIMEOUT)
-				GetUpdModulesInfo();
+					GetUpdModulesInfo();
 			}
 			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
 			{
@@ -1969,34 +1969,42 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 					CloseHandle(hFar);
 					mprintf(L"\n\n\n");
 
-					bool bDelSevenZip=false;
+					HMODULE hSevenZip=nullptr;
 					wchar_t SevenZip[MAX_PATH];
-					lstrcat(GetModuleDir(ipc.PluginModule,SevenZip),L"7z.dll");
-					if (GetFileAttributes(SevenZip)==INVALID_FILE_ATTRIBUTES)
+					bool bDelSevenZip=false;
+
+					GetModuleDir(ipc.PluginModule,SevenZip);
+					lstrcat(SevenZip,L"7z.dll");
+
+					if (!(hSevenZip=LoadLibrary(SevenZip)))
 					{
 						wchar_t tmp[MAX_PATH];
 						for (size_t i=0; i<ipc.CountModules; i++)
 						{
 							if (MInfo[i].Guid==ArcliteGuid)
 							{
-								lstrcat(GetModuleDir(MInfo[i].ModuleName,tmp),L"7z.dll");
+								GetModuleDir(MInfo[i].ModuleName,tmp);
+								lstrcat(tmp,L"7z.dll");
 								break;
 							}
 						}
-						if (GetFileAttributes(tmp)!=INVALID_FILE_ATTRIBUTES)
+						if (GetFileAttributes(tmp)==INVALID_FILE_ATTRIBUTES)
+						{
+							if (!(hSevenZip=LoadLibrary(lstrcat(get_7z_path(HKEY_CURRENT_USER,SevenZip),L"7z.dll"))))
+								hSevenZip=LoadLibrary(lstrcat(get_7z_path(HKEY_LOCAL_MACHINE,SevenZip),L"7z.dll"));
+						}
+						else
 						{
 							lstrcat(lstrcpy(SevenZip,ipc.TempDirectory),L"7z.dll");
 							if (CopyFile(tmp,SevenZip,FALSE))
-								bDelSevenZip=true;
-							else
 							{
-								ExpandEnvironmentStrings(L"%ProgramFiles%\\7-Zip\\7z.dll",SevenZip,ARRAYSIZE(SevenZip));
-								if (GetFileAttributes(SevenZip)==INVALID_FILE_ATTRIBUTES) SevenZip[0]=0;
+								bDelSevenZip=true;
+								hSevenZip=LoadLibrary(SevenZip);
 							}
 						}
 					}
-					HMODULE h7z=SevenZip[0]?LoadLibrary(SevenZip):nullptr;
-					if (!h7z)
+
+					if (!hSevenZip)
 					{
 						TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 						mprintf(L"Can't load 7z.dll\n");
@@ -2023,7 +2031,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										{
 											mprintf(L"Unpacking %-50s",arc);
 
-											if(!extract(h7z,local_arc,destpath))
+											if(!extract(hSevenZip,local_arc,destpath))
 											{
 												TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 												mprintf(L"\nUnpack error. Retry? (Y/N) ");
@@ -2064,7 +2072,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 								}
 							}
 						}
-						FreeLibrary(h7z);
+						FreeLibrary(hSevenZip);
 						if (bDelSevenZip)
 							DeleteFile(SevenZip);
 					}
