@@ -120,7 +120,8 @@ enum EVENT
 {
 	E_LOADPLUGINS,
 	E_ASKUPD,
-	E_ASKEXIT,
+	E_EXIT,
+	E_CANTCOMPLETE
 };
 
 struct EventStruct
@@ -379,8 +380,16 @@ VOID StartUpdate(bool Thread)
 	{
 		if (!Thread)
 		{
-			LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
-			Info.Message(&MainGuid, nullptr, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 1);
+			LPCWSTR Items[]={MSG(MName),MSG(MCantCompleteUpd),MSG(MExitFAR)};
+			Info.Message(&MainGuid, nullptr, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+		}
+		else
+		{
+			HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+			EventStruct es={E_CANTCOMPLETE,hEvent};
+			Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
+			WaitForSingleObject(hEvent,INFINITE);
+			CloseHandle(hEvent);
 		}
 	}
 	else if(NeedRestart)
@@ -423,7 +432,7 @@ VOID StartUpdate(bool Thread)
 			else
 			{
 				HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
-				EventStruct es={E_ASKEXIT,hEvent};
+				EventStruct es={E_EXIT,hEvent};
 				Info.AdvControl(&MainGuid, ACTL_SYNCHRO, 0, &es);
 				WaitForSingleObject(hEvent,INFINITE);
 				CloseHandle(hEvent);
@@ -1148,6 +1157,7 @@ bool DownloadUpdates()
 {
 	wchar_t URL[MAX_PATH], LocalFile[MAX_PATH];
 	bool bUPD=false;
+	NeedRestart=false;
 	for(size_t i=0; i<ipc.CountModules; i++)
 	{
 		if (ipc.Modules[i].Flags&UPD)
@@ -1190,7 +1200,6 @@ bool DownloadUpdates()
 		if (bUPD)
 			SetStatus(S_UPTODATE);
 	}
-
 	return true;
 }
 
@@ -1685,7 +1694,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 			else
 			{
 				if (WaitForSingleObject(WaitEvent,0)==WAIT_TIMEOUT)
-					GetUpdModulesInfo();
+				GetUpdModulesInfo();
 			}
 			if (GetStatus()==S_UPDATE || GetStatus()==S_UPTODATE)
 			{
@@ -1862,7 +1871,6 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 		}
 	}
 
-	NeedRestart=false;
 	if (ShowModulesDialog())
 		StartUpdate(false);
 
@@ -1894,10 +1902,17 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
-				case E_ASKEXIT:
+				case E_EXIT:
 				{
 					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
 					Info.Message(&MainGuid, nullptr, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+					SetEvent(reinterpret_cast<HANDLE>(es->Data));
+					break;
+				}
+				case E_CANTCOMPLETE:
+				{
+					LPCWSTR Items[]={MSG(MName),MSG(MCantCompleteUpd),MSG(MExitFAR)};
+					Info.Message(&MainGuid, nullptr, FMSG_WARNING|FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
@@ -1954,12 +1969,31 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 					CloseHandle(hFar);
 					mprintf(L"\n\n\n");
 
+					bool bDelSevenZip=false;
 					wchar_t SevenZip[MAX_PATH];
 					lstrcat(GetModuleDir(ipc.PluginModule,SevenZip),L"7z.dll");
 					if (GetFileAttributes(SevenZip)==INVALID_FILE_ATTRIBUTES)
 					{
-						ExpandEnvironmentStrings(L"%ProgramFiles%\\7-Zip\\7z.dll",SevenZip,ARRAYSIZE(SevenZip));
-						if (GetFileAttributes(SevenZip)==INVALID_FILE_ATTRIBUTES) SevenZip[0]=0;
+						wchar_t tmp[MAX_PATH];
+						for (size_t i=0; i<ipc.CountModules; i++)
+						{
+							if (MInfo[i].Guid==ArcliteGuid)
+							{
+								lstrcat(GetModuleDir(MInfo[i].ModuleName,tmp),L"7z.dll");
+								break;
+							}
+						}
+						if (GetFileAttributes(tmp)!=INVALID_FILE_ATTRIBUTES)
+						{
+							lstrcat(lstrcpy(SevenZip,ipc.TempDirectory),L"7z.dll");
+							if (CopyFile(tmp,SevenZip,FALSE))
+								bDelSevenZip=true;
+							else
+							{
+								ExpandEnvironmentStrings(L"%ProgramFiles%\\7-Zip\\7z.dll",SevenZip,ARRAYSIZE(SevenZip));
+								if (GetFileAttributes(SevenZip)==INVALID_FILE_ATTRIBUTES) SevenZip[0]=0;
+							}
+						}
 					}
 					HMODULE h7z=SevenZip[0]?LoadLibrary(SevenZip):nullptr;
 					if (!h7z)
@@ -2031,6 +2065,8 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 							}
 						}
 						FreeLibrary(h7z);
+						if (bDelSevenZip)
+							DeleteFile(SevenZip);
 					}
 					wchar_t exec[2048],execExp[4096];
 					GetPrivateProfileString(L"events",L"PostInstall",L"",exec,ARRAYSIZE(exec),ipc.Config);
