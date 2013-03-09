@@ -11,6 +11,7 @@
 #include <shlwapi.h>
 #include <shellapi.h>
 #include <wininet.h>
+#include <Winternl.h>
 #include "memory.hpp"
 
 extern PluginStartupInfo Info;

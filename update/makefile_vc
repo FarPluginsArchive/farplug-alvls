@@ -33,7 +33,7 @@ PCH=$(INTDIR)\headers.pch
 
 LIBS=chkstk.obj advapi32.lib kernel32.lib user32.lib Version.lib shlwapi.lib Psapi.lib Shell32.lib wininet.lib oleaut32.lib MSVCRT.LIB Rpcrt4.lib
 
-CPP_PROJ=/W3 /nologo /c /Oi- /O1 /Os /GF /GS- /Gr /GR- /EHs-c- /LD /Fo"$(INTDIR)\\" /DUNICODE /D_UNICODE /I "$(INC)"
+CPP_PROJ=/W3 /nologo /c /Oi- /O1 /Os /GF /GS- /Gr /GR- /EHs-c- /LD /Fo"$(INTDIR)\\" /DUNICODE /D_UNICODE /DPSAPI_VERSION=1 /I "$(INC)"
 
 !ifdef DEBUG
 CPP_PROJ=$(CPP_PROJ) /DDEBUG /Od

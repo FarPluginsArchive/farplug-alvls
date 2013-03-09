@@ -382,8 +382,52 @@ VOID CleanTime()
 	LeaveCriticalSection(&cs);
 }
 
+bool IsReRunFar()
+{
+	typedef struct _smPROCESS_BASIC_INFORMATION {
+		LONG ExitStatus;
+		PPEB PebBaseAddress;
+		ULONG_PTR AffinityMask;
+		LONG BasePriority;
+		ULONG_PTR UniqueProcessId;
+		ULONG_PTR InheritedFromUniqueProcessId;
+	} smPROCESS_BASIC_INFORMATION, *smPPROCESS_BASIC_INFORMATION;
+
+	HANDLE hFarDup;
+	DuplicateHandle(GetCurrentProcess(),GetCurrentProcess(),GetCurrentProcess(),&hFarDup,0,FALSE,DUPLICATE_SAME_ACCESS);
+
+	DWORD ret;
+	smPROCESS_BASIC_INFORMATION processInfo;
+	bool isFar=false;
+	if (ifn.NtQueryInformationProcess(hFarDup,ProcessBasicInformation,&processInfo,sizeof(processInfo),&ret)==NO_ERROR)
+	{
+		HANDLE hParent=OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,FALSE,(DWORD)processInfo.InheritedFromUniqueProcessId);
+		if (hParent)
+		{
+			wchar_t FileName[MAX_PATH];
+			DWORD sz=MAX_PATH;
+			if (GetModuleFileNameEx(hParent,nullptr,FileName,sz))
+			{
+				if (!FSF.LStricmp(FileName,ipc.Modules[0].ModuleName))
+					isFar=true;
+			}
+			else if (ifn.QueryFullProcessImageName(hParent,0,FileName,&sz))
+			{
+				if (!FSF.LStricmp(FileName,ipc.Modules[0].ModuleName))
+					isFar=true;
+			}
+			CloseHandle(hParent);
+		}
+	}
+	CloseHandle(hFarDup);
+	return isFar;
+}
+
 VOID StartUpdate(bool Thread)
 {
+	if (IsReRunFar())
+		return;
+
 	DWORD RunDllExitCode=0;
 	GetExitCodeProcess(hRunDll,&RunDllExitCode);
 	if(RunDllExitCode==STILL_ACTIVE)
@@ -1568,20 +1612,20 @@ bool ShowModulesDialog()
 {
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
-		/* 0*/{DI_DOUBLEBOX,  0, 0,80,24, 0, 0, 0,                             0, MSG(MAvailableUpdates),0,0},
-		/* 1*/{DI_LISTBOX,    1, 1,78,15, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
-		/* 2*/{DI_TEXT,      -1,16, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
-		/* 3*/{DI_TEXT,       2,17,78,17,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 4*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 5*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 6*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 7*/{DI_TEXT,      -1,21, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
-		/* 8*/{DI_BUTTON,     0,22, 0, 0, 0, 0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MDownload),0,0},
-		/* 9*/{DI_BUTTON,     0,22, 0, 0, 0, 0, 0,             DIF_CENTERGROUP, MSG(MCancel),0,0}
+		/* 0*/{DI_DOUBLEBOX,  0, 0,80,25, 0, 0, 0,                             0, MSG(MAvailableUpdates),0,0},
+		/* 1*/{DI_LISTBOX,    1, 1,78,16, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
+		/* 2*/{DI_TEXT,      -1,17, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
+		/* 3*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 5*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 6*/{DI_TEXT,       2,21,78,21,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 7*/{DI_TEXT,      -1,22, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
+		/* 8*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MDownload),0,0},
+		/* 9*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0,             DIF_CENTERGROUP, MSG(MCancel),0,0}
 	};
 
 	bool ret=false;
-	hDlg=Info.DialogInit(&MainGuid, &ModulesDlgGuid,-1,-1,80,24,L"Contents",DialogItems,ARRAYSIZE(DialogItems),0,FDLG_SMALLDIALOG,ShowModulesDialogProc,0);
+	hDlg=Info.DialogInit(&MainGuid, &ModulesDlgGuid,-1,-1,80,25,L"Contents",DialogItems,ARRAYSIZE(DialogItems),0,FDLG_SMALLDIALOG,ShowModulesDialogProc,0);
 
 	if (hDlg != INVALID_HANDLE_VALUE)
 	{
