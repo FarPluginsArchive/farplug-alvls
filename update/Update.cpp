@@ -411,7 +411,7 @@ bool ParentIsFar()
 				if (!FSF.LStricmp(FileName,ipc.Modules[0].ModuleName))
 					isFar=true;
 			}
-			else if (ifn.QueryFullProcessImageName(hParent,0,FileName,&sz))
+			else if (ifn.QueryFullProcessImageNameW(hParent,0,FileName,&sz))
 			{
 				if (!FSF.LStricmp(FileName,ipc.Modules[0].ModuleName))
 					isFar=true;
