@@ -426,7 +426,10 @@ bool ParentIsFar()
 VOID StartUpdate(bool Thread)
 {
 	if (ParentIsFar())
+	{
+		MessageBeep(MB_ICONASTERISK);
 		return;
+	}
 
 	DWORD RunDllExitCode=0;
 	GetExitCodeProcess(hRunDll,&RunDllExitCode);
