@@ -382,7 +382,7 @@ VOID CleanTime()
 	LeaveCriticalSection(&cs);
 }
 
-bool IsReRunFar()
+bool ParentIsFar()
 {
 	typedef struct _smPROCESS_BASIC_INFORMATION {
 		LONG ExitStatus;
@@ -425,7 +425,7 @@ bool IsReRunFar()
 
 VOID StartUpdate(bool Thread)
 {
-	if (IsReRunFar())
+	if (ParentIsFar())
 		return;
 
 	DWORD RunDllExitCode=0;
