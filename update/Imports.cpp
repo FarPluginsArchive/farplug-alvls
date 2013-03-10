@@ -13,12 +13,10 @@ VOID ImportedFunctions::Load()
 		pIsWow64Process=reinterpret_cast<ISWOW64PROCESS>(GetProcAddress(hKernel32,"IsWow64Process"));
 		pQueryFullProcessImageNameW=reinterpret_cast<QUERYFULLPROCESSIMAGENAMEW>(GetProcAddress(hKernel32,"QueryFullProcessImageNameW"));
 	}
-	HMODULE hNtDll=LoadLibrary(L"ntdll.dll");
+	HMODULE hNtDll=GetModuleHandle(L"ntdll.dll");
 	if(hNtDll)
 	{
 		pNtQueryInformationProcess=reinterpret_cast<NTQUERYINFORMATIONPROCESS>(GetProcAddress(hNtDll,"NtQueryInformationProcess"));
-		if (pNtQueryInformationProcess==nullptr)
-			FreeLibrary(hNtDll);
 	}
 }
 

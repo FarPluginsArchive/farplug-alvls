@@ -90,6 +90,7 @@ void FreeModulesInfo()
 struct OPT
 {
 	DWORD Auto;
+	DWORD TrayNotify;
 	DWORD Wait;
 	DWORD ShowDisable;
 	DWORD Proxy;
@@ -142,6 +143,7 @@ HANDLE hDlg=nullptr;
 HANDLE StopEvent=nullptr;
 HANDLE UnlockEvent=nullptr;
 HANDLE WaitEvent=nullptr;
+HANDLE hNotifyThread=nullptr;
 
 CRITICAL_SECTION cs;
 
@@ -394,11 +396,12 @@ bool ParentIsFar()
 	} smPROCESS_BASIC_INFORMATION, *smPPROCESS_BASIC_INFORMATION;
 
 	HANDLE hFarDup;
+	smPROCESS_BASIC_INFORMATION processInfo;
+	DWORD ret;
+	bool isFar=false;
+
 	DuplicateHandle(GetCurrentProcess(),GetCurrentProcess(),GetCurrentProcess(),&hFarDup,0,FALSE,DUPLICATE_SAME_ACCESS);
 
-	DWORD ret;
-	smPROCESS_BASIC_INFORMATION processInfo;
-	bool isFar=false;
 	if (ifn.NtQueryInformationProcess(hFarDup,ProcessBasicInformation,&processInfo,sizeof(processInfo),&ret)==NO_ERROR)
 	{
 		HANDLE hParent=OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,FALSE,(DWORD)processInfo.InheritedFromUniqueProcessId);
@@ -1644,6 +1647,7 @@ VOID ReadSettings()
 {
 	PluginSettings settings(MainGuid, Info.SettingsControl);
 	opt.Auto=settings.Get(0,L"Auto",0);
+	opt.TrayNotify=settings.Get(0,L"TrayNotify",0);
 	opt.Wait=settings.Get(0,L"Wait",10);
 	ipc.DelAfterInstall=settings.Get(0,L"Delete",1);
 	opt.Proxy=settings.Get(0,L"Proxy",0);
@@ -1669,44 +1673,49 @@ intptr_t Config()
 
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2				Selected	History	Mask	Flags	Data	MaxLen	UserParam
-		/* 0*/{DI_DOUBLEBOX,  3, 1,60,12, 0, 0, 0,                  0,MSG(MName),0,0},
+		/* 0*/{DI_DOUBLEBOX,  3, 1,60,13, 0, 0, 0,                  0,MSG(MName),0,0},
 		/* 1*/{DI_CHECKBOX,   5, 2, 0, 0, opt.Auto, 0, 0,   DIF_FOCUS, MSG(MCfgAuto),0,0},
-		/* 2*/{DI_FIXEDIT,    5, 3, 7, 0, 0, 0, L"999",  DIF_MASKEDIT,FSF.itoa(opt.Wait,num,10),0,0},
-		/* 3*/{DI_TEXT,       9, 3,58, 0, 0, 0, 0,                  0,MSG(MCfgWait),0,0},
-		/* 4*/{DI_CHECKBOX,   5, 4, 0, 0, ipc.DelAfterInstall,0, 0,DIF_3STATE,MSG(MCfgDelete),0,0},
-		/* 5*/{DI_CHECKBOX,   5, 5, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
-		/* 6*/{DI_TEXT,       9, 6,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
-		/* 7*/{DI_EDIT,      24, 6,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
-		/* 8*/{DI_TEXT,       9, 7,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
-		/* 9*/{DI_EDIT,      24, 7,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
-		/*10*/{DI_PSWEDIT,   43, 7,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
-		/*11*/{DI_TEXT,       5, 8,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
-		/*12*/{DI_EDIT,       5, 9,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,opt.TempDirectory,0,0},
-		/*13*/{DI_TEXT,      -1,10, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
-		/*14*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
-		/*15*/{DI_BUTTON,     0,11, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
+		/* 2*/{DI_CHECKBOX,   9, 3, 0, 0, opt.TrayNotify, 0, 0,     0, MSG(MCfgTrayNotify),0,0},
+		/* 3*/{DI_FIXEDIT,    5, 4, 7, 0, 0, 0, L"999",  DIF_MASKEDIT,FSF.itoa(opt.Wait,num,10),0,0},
+		/* 4*/{DI_TEXT,       9, 4,58, 0, 0, 0, 0,                  0,MSG(MCfgWait),0,0},
+		/* 5*/{DI_CHECKBOX,   5, 5, 0, 0, ipc.DelAfterInstall,0, 0,DIF_3STATE,MSG(MCfgDelete),0,0},
+		/* 6*/{DI_CHECKBOX,   5, 6, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
+		/* 7*/{DI_TEXT,       9, 7,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
+		/* 8*/{DI_EDIT,      24, 7,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
+		/* 9*/{DI_TEXT,       9, 8,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
+		/*10*/{DI_EDIT,      24, 8,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
+		/*11*/{DI_PSWEDIT,   43, 8,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
+		/*12*/{DI_TEXT,       5, 9,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
+		/*13*/{DI_EDIT,       5,10,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,opt.TempDirectory,0,0},
+		/*14*/{DI_TEXT,      -1,11, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
+		/*15*/{DI_BUTTON,     0,12, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
+		/*16*/{DI_BUTTON,     0,12, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
 	};
 
-	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,14,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
+	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,15,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
 
 	intptr_t ret=0;
 	if (hDlg != INVALID_HANDLE_VALUE)
 	{
-		if (Info.DialogRun(hDlg)==14)
+		if (Info.DialogRun(hDlg)==15)
 		{
 			opt.Auto=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,1,0);
-			opt.Wait=FSF.atoi((const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+			if (opt.Auto)
+				opt.TrayNotify=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,2,0);
+			else
+				opt.TrayNotify=0;
+			opt.Wait=FSF.atoi((const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,3,0));
 			if (!opt.Wait) opt.Wait=10;
-			ipc.DelAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,4,0);
-			opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,5,0);
+			ipc.DelAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,5,0);
+			opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,6,0);
 			if (opt.Proxy)
 			{
-				lstrcpy(opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,7,0));
-				lstrcpy(opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,9,0));
-				lstrcpy(opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,10,0));
+				lstrcpy(opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,8,0));
+				lstrcpy(opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,10,0));
+				lstrcpy(opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,11,0));
 			}
 			wchar_t Buf[MAX_PATH];
-			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,12,0));
+			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,13,0));
 			if (Buf[0]==0) lstrcpy(Buf,L"%TEMP%\\FarUpdate\\");
 			lstrcpy(opt.TempDirectory,Buf);
 			ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
@@ -1716,6 +1725,7 @@ intptr_t Config()
 
 			PluginSettings settings(MainGuid, Info.SettingsControl);
 			settings.Set(0,L"Auto",opt.Auto);
+			settings.Set(0,L"TrayNotify",opt.TrayNotify);
 			settings.Set(0,L"Wait",opt.Wait);
 			settings.Set(0,L"Delete",ipc.DelAfterInstall);
 			settings.Set(0,L"Proxy",opt.Proxy);
@@ -1728,6 +1738,84 @@ intptr_t Config()
 		Info.DialogFree(hDlg);
 	}
 	return ret;
+}
+
+
+#define WM_TRAY_TRAYMSG WM_APP + 0x00001000
+#define NOTIFY_DURATION 5000
+
+LRESULT CALLBACK tray_wnd_proc(HWND wnd, UINT msg, WPARAM w_param, LPARAM l_param)
+{
+	if (msg == WM_TIMER || msg == WM_TRAY_TRAYMSG && (l_param == WM_LBUTTONDOWN || l_param == WM_RBUTTONDOWN || l_param == WM_MBUTTONDOWN))
+		PostQuitMessage(0);
+	return DefWindowProc(wnd, msg, w_param, l_param);
+}
+
+DWORD WINAPI NotifyProc(LPVOID)
+{
+	HICON tray_icon=nullptr;
+	HWND tray_wnd=nullptr;
+	WNDCLASSEX tray_wc;
+	NOTIFYICONDATA tray_icondata;
+
+	ZeroMemory(&tray_wc, sizeof(tray_wc));
+	ZeroMemory(&tray_icondata, sizeof(tray_icondata));
+
+	tray_icon=ExtractIcon(GetModuleHandle(nullptr), ipc.PluginModule, 0);
+
+	tray_wc.cbSize=sizeof(WNDCLASSEX);
+	tray_wc.style=CS_HREDRAW|CS_VREDRAW;
+	tray_wc.lpfnWndProc=&tray_wnd_proc;
+	tray_wc.cbClsExtra=0;
+	tray_wc.cbWndExtra=0;
+	tray_wc.hInstance=GetModuleHandle(nullptr);
+	tray_wc.hIcon=tray_icon;
+	tray_wc.hCursor=LoadCursor(nullptr, IDC_ARROW);
+	tray_wc.hbrBackground=(HBRUSH)(COLOR_WINDOW + 1);
+	tray_wc.lpszMenuName=nullptr;
+	tray_wc.lpszClassName=L"UpdateNotifyClass";
+	tray_wc.hIconSm=tray_icon;
+
+	if (RegisterClassEx(&tray_wc))
+	{
+		tray_wnd=CreateWindow(tray_wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+		if (tray_wnd)
+		{
+			tray_icondata.cbSize=sizeof(NOTIFYICONDATA);
+			tray_icondata.uID=1;
+			tray_icondata.hWnd=tray_wnd;
+			tray_icondata.uFlags=NIF_ICON|NIF_MESSAGE|NIF_INFO|NIF_TIP;
+			tray_icondata.hIcon=tray_icon;
+			tray_icondata.uTimeout=NOTIFY_DURATION;
+			tray_icondata.dwInfoFlags=NIIF_INFO|NIIF_LARGE_ICON;
+			lstrcpy(tray_icondata.szInfo,MSG(MTrayNotify));
+			lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
+			lstrcpy(tray_icondata.szTip,MSG(MTrayNotify));
+			tray_icondata.uCallbackMessage=WM_TRAY_TRAYMSG;
+
+			if (Shell_NotifyIcon(NIM_ADD, &tray_icondata))
+			{
+				SetTimer(tray_wnd, 1, NOTIFY_DURATION, nullptr);
+				MSG msg;
+				while (GetMessage(&msg, nullptr, 0, 0))
+				{
+					if (msg.message == WM_CLOSE)
+						break;
+					TranslateMessage(&msg);
+					DispatchMessage(&msg);
+				}
+				KillTimer(tray_wnd, 1);
+			}
+			Shell_NotifyIcon(NIM_DELETE, &tray_icondata);
+			DestroyWindow(tray_wnd);
+			tray_wnd=nullptr;
+		}
+	}
+	if (tray_icon) DestroyIcon(tray_icon);
+	UnregisterClass(tray_wc.lpszClassName, GetModuleHandle(nullptr));
+	CloseHandle(hNotifyThread);
+	hNotifyThread=nullptr;
+	return 0;
 }
 
 DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
@@ -1758,6 +1846,9 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 				if (WaitEvent) SetEvent(WaitEvent);
 				if (GetStatus()==S_UPDATE && opt.Auto)
 				{
+					if (opt.TrayNotify)
+						hNotifyThread=CreateThread(nullptr,0,&NotifyProc,nullptr,0,0);
+
 					SetStatus(S_DOWNLOAD);
 					DownloadUpdates();
 					if (GetStatus()==S_COMPLET)
@@ -1867,6 +1958,14 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 	CloseHandle(StopEvent);
 	CloseHandle(UnlockEvent);
 	if (hRunDll) CloseHandle(hRunDll);
+	if (hNotifyThread)
+	{
+		DWORD ec = 0;
+		if (GetExitCodeThread(hNotifyThread, &ec) == STILL_ACTIVE)
+			TerminateThread(hNotifyThread, ec);
+		CloseHandle(hNotifyThread);
+		hNotifyThread=nullptr;
+	}
 	FreeModulesInfo();
 }
 
