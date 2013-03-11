@@ -1742,11 +1742,11 @@ intptr_t Config()
 
 
 #define WM_TRAY_TRAYMSG WM_APP + 0x00001000
-#define NOTIFY_DURATION 5000
+#define NOTIFY_DURATION 10000
 
 LRESULT CALLBACK tray_wnd_proc(HWND wnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
-	if (msg == WM_TIMER || msg == WM_TRAY_TRAYMSG && (l_param == WM_LBUTTONDOWN || l_param == WM_RBUTTONDOWN || l_param == WM_MBUTTONDOWN))
+	if (msg == WM_TRAY_TRAYMSG && l_param == WM_LBUTTONDBLCLK)
 		PostQuitMessage(0);
 	return DefWindowProc(wnd, msg, w_param, l_param);
 }
@@ -1781,7 +1781,7 @@ DWORD WINAPI NotifyProc(LPVOID)
 		tray_wnd=CreateWindow(tray_wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 		if (tray_wnd)
 		{
-			tray_icondata.cbSize=sizeof(NOTIFYICONDATA);
+			tray_icondata.cbSize=NOTIFYICONDATA_V3_SIZE;//sizeof(NOTIFYICONDATA);
 			tray_icondata.uID=1;
 			tray_icondata.hWnd=tray_wnd;
 			tray_icondata.uFlags=NIF_ICON|NIF_MESSAGE|NIF_INFO|NIF_TIP;
@@ -1795,16 +1795,23 @@ DWORD WINAPI NotifyProc(LPVOID)
 
 			if (Shell_NotifyIcon(NIM_ADD, &tray_icondata))
 			{
-				SetTimer(tray_wnd, 1, NOTIFY_DURATION, nullptr);
-				MSG msg;
-				while (GetMessage(&msg, nullptr, 0, 0))
+				for (;;)
 				{
-					if (msg.message == WM_CLOSE)
+					MSG msg;
+					if (PeekMessage(&msg,nullptr,0,0,PM_NOREMOVE))
+					{
+						GetMessage(&msg,nullptr,0,0);
+						if (msg.message == WM_CLOSE)
+							break;
+					}
+					if (GetStatus()!=S_DOWNLOAD)
+					{
+						PostQuitMessage(0);
 						break;
+					}
 					TranslateMessage(&msg);
 					DispatchMessage(&msg);
 				}
-				KillTimer(tray_wnd, 1);
 			}
 			Shell_NotifyIcon(NIM_DELETE, &tray_icondata);
 			DestroyWindow(tray_wnd);
@@ -1846,10 +1853,9 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 				if (WaitEvent) SetEvent(WaitEvent);
 				if (GetStatus()==S_UPDATE && opt.Auto)
 				{
+					SetStatus(S_DOWNLOAD);
 					if (opt.TrayNotify)
 						hNotifyThread=CreateThread(nullptr,0,&NotifyProc,nullptr,0,0);
-
-					SetStatus(S_DOWNLOAD);
 					DownloadUpdates();
 					if (GetStatus()==S_COMPLET)
 					{
