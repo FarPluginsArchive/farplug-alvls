@@ -1525,22 +1525,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				{
 					if (Param1==DlgLIST)
 					{
-						if (vk==VK_PRIOR)
-						{
-							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
-							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
-							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-							if (Cur)
-							{
-								wchar_t PluginDirectory[MAX_PATH];
-								GetModuleDir(Cur->ModuleName,PluginDirectory);
-								FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
-								if (Info.PanelControl(PANEL_ACTIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo))
-									Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
-								return true;
-							}
-						}
-						else if (vk==0x48) // VK_H
+						if (vk==0x48) // VK_H
 						{
 							if (GetStatus()!=S_DOWNLOAD)
 							{
@@ -1553,6 +1538,64 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 								MessageBeep(MB_OK);
 							return true;
 						}
+					}
+				}
+				if (Param1==DlgLIST)
+				{
+					bool isCtrl=IsCtrl(record);
+					bool isCtrlShift=(record->Event.KeyEvent.dwControlKeyState&(RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED|SHIFT_PRESSED))!=0;
+					if ((isCtrl && vk==VK_PRIOR) || (isCtrlShift && vk==VK_PRIOR)) //PgUp
+					{
+						intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+						ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+						ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+						if (Cur)
+						{
+							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+							wchar_t PluginDirectory[MAX_PATH];
+							GetModuleDir(Cur->ModuleName,PluginDirectory);
+							FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
+							Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
+//								Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
+							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+							return true;
+						}
+					}
+					else if ((isCtrl && vk==VK_NEXT) || (isCtrlShift && vk==VK_NEXT))//PgDn
+					{
+						intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+						ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+						ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+						if (Cur)
+						{
+							if (*Cur->ArcName)
+							{
+								wchar_t arc[MAX_PATH];
+								lstrcpy(arc,ipc.TempDirectory);
+								lstrcat(arc,Cur->ArcName);
+								if(GetFileAttributes(arc)!=INVALID_FILE_ATTRIBUTES)
+								{
+									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+									FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),L"\\",nullptr,ArcliteGuid,arc};
+									Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
+//										Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
+									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+									return true;
+								}
+							}
+						}
+						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+						MessageBeep(MB_OK);
+						return true;
+					}
+					else if ((isCtrl && vk==VK_HOME) || (isCtrlShift && vk==VK_HOME))
+					{
+						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+						FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),ipc.TempDirectory,nullptr,{0},nullptr};
+						Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
+//							Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
+						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+						return true;
 					}
 				}
 			}
