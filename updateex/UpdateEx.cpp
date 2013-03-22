@@ -94,6 +94,7 @@ struct OPT
 	DWORD Wait;
 	DWORD ShowDisable;
 	DWORD Proxy;
+	DWORD SetActive;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
 	wchar_t ProxyPass[MAX_PATH];
@@ -577,26 +578,37 @@ bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 	return ret;
 }
 
+struct STDPLUG
+{
+	size_t i;
+	const GUID *Guid;
+	wchar_t *Log;
+} StdPlug[]= {
+	{0, &FarGuid,        L"http://www.farmanager.com/svn/trunk/unicode_far/changelog"},
+	{1, &AlignGuid,      L"align"},
+	{2, &ArcliteGuid,    L"arclite"},
+	{3, &AutowrapGuid,   L"autowrap"},
+	{4, &BracketsGuid,   L"brackets"},
+	{5, &CompareGuid,    L"compare"},
+	{6, &DrawlineGuid,   L"drawline"},
+	{7, &EditcaseGuid,   L"editcase"},
+	{8, &EmenuGuid,      L"emenu"},
+	{9, &FarcmdsGuid,    L"farcmds"},
+	{10,&FilecaseGuid,   L"filecase"},
+	{11,&HlfviewerGuid,  L"hlfviewer"},
+	{12,&LuamacroGuid,   L"luamacro"},
+	{13,&NetworkGuid,    L"network"},
+	{14,&ProclistGuid,   L"proclist"},
+	{15,&TmppanelGuid,   L"tmppanel"},
+	{16,&FarcolorerGuid, L"http://colorer.svn.sourceforge.net/viewvc/colorer/trunk/far3colorer/changelog"},
+	{17,&NetboxGuid,     L"http://raw.github.com/michaellukashov/Far-NetBox/master/ChangeLog"}
+};
+
 bool IsStdPlug(GUID PlugGuid)
 {
-	if (PlugGuid==AlignGuid ||
-			PlugGuid==ArcliteGuid ||
-			PlugGuid==AutowrapGuid ||
-			PlugGuid==BracketsGuid ||
-			PlugGuid==CompareGuid ||
-			PlugGuid==DrawlineGuid ||
-			PlugGuid==EditcaseGuid ||
-			PlugGuid==EmenuGuid ||
-			PlugGuid==FarcmdsGuid ||
-			PlugGuid==FarcolorerGuid ||
-			PlugGuid==FilecaseGuid ||
-			PlugGuid==HlfviewerGuid ||
-			PlugGuid==LuamacroGuid ||
-			PlugGuid==NetworkGuid ||
-			PlugGuid==ProclistGuid ||
-			PlugGuid==TmppanelGuid ||
-			PlugGuid==NetboxGuid)
-		return true;
+	for (size_t i=0; i<=17; i++)
+		if (*StdPlug[i].Guid==PlugGuid)
+			return true;
 	return false;
 }
 
@@ -1465,11 +1477,21 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
 							if (Cur)
 							{
-								if (Cur->ID==0)
+								for (size_t i=0; i<=17; i++)
 								{
-									wchar_t url[]=L"http://www.farmanager.com/svn/trunk/unicode_far/changelog";
-									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
-									return true;
+									if (*StdPlug[i].Guid==Cur->Guid && i && i<16)
+									{
+										wchar_t url[512]=L"http://www.farmanager.com/svn/trunk/plugins/";
+										lstrcat(url,StdPlug[i].Log);
+										lstrcat(url,L"/changelog");
+										ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+										return true;
+									}
+									else if (*StdPlug[i].Guid==Cur->Guid && (i==0 || i>=16))
+									{
+										ShellExecute(nullptr,L"open",StdPlug[i].Log,nullptr,nullptr,SW_SHOWNORMAL);
+										return true;
+									}
 								}
 							}
 							MessageBeep(MB_OK);
@@ -1542,60 +1564,74 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				}
 				if (Param1==DlgLIST)
 				{
-					bool isCtrl=IsCtrl(record);
-					bool isCtrlShift=(record->Event.KeyEvent.dwControlKeyState&(RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED|SHIFT_PRESSED))!=0;
-					if ((isCtrl && vk==VK_PRIOR) || (isCtrlShift && vk==VK_PRIOR)) //PgUp
+//					struct WindowType Type={sizeof(WindowType)};
+//					if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && (Type.Type==WTYPE_PANELS))
 					{
-						intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
-						ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
-						ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-						if (Cur)
+						PluginSettings settings(MainGuid, Info.SettingsControl);
+						opt.SetActive=settings.Get(0,L"SetActive",1);
+						bool isLActive=false;
+						struct PanelInfo PInfo={sizeof(PanelInfo)};
+						if (Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&PInfo))
+							isLActive=(PInfo.PanelType==PTYPE_FILEPANEL && PInfo.Flags&PFLAGS_PANELLEFT);
+						bool isCtrl=IsCtrl(record);
+						bool isCtrlShift=(record->Event.KeyEvent.dwControlKeyState&(RIGHT_CTRL_PRESSED|LEFT_CTRL_PRESSED|SHIFT_PRESSED))!=0;
+
+						if ((isCtrl && vk==VK_PRIOR) || (isCtrlShift && vk==VK_PRIOR)) //PgUp
+						{
+							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+							if (Cur)
+							{
+								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+								wchar_t PluginDirectory[MAX_PATH];
+								GetModuleDir(Cur->ModuleName,PluginDirectory);
+								FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
+								Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETPANELDIRECTORY,0,&dirInfo);
+								if (opt.SetActive)
+									Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETACTIVEPANEL,0,0);
+								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+								return true;
+							}
+						}
+						else if ((isCtrl && vk==VK_NEXT) || (isCtrlShift && vk==VK_NEXT))//PgDn
+						{
+							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+							if (Cur)
+							{
+								if (*Cur->ArcName)
+								{
+									wchar_t arc[MAX_PATH];
+									lstrcpy(arc,ipc.TempDirectory);
+									lstrcat(arc,Cur->ArcName);
+									if(GetFileAttributes(arc)!=INVALID_FILE_ATTRIBUTES)
+									{
+										Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+										FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),L"\\",nullptr,ArcliteGuid,arc};
+										Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETPANELDIRECTORY,0,&dirInfo);
+										if (opt.SetActive)
+											Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETACTIVEPANEL,0,0);
+										Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+										return true;
+									}
+								}
+							}
+							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+							MessageBeep(MB_OK);
+							return true;
+						}
+						else if ((isCtrl && vk==VK_HOME) || (isCtrlShift && vk==VK_HOME))
 						{
 							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
-							wchar_t PluginDirectory[MAX_PATH];
-							GetModuleDir(Cur->ModuleName,PluginDirectory);
-							FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
-							Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
-//								Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
+							FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),ipc.TempDirectory,nullptr,{0},nullptr};
+							Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETPANELDIRECTORY,0,&dirInfo);
+							if (opt.SetActive)
+								Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETACTIVEPANEL,0,0);
 							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
 							return true;
 						}
-					}
-					else if ((isCtrl && vk==VK_NEXT) || (isCtrlShift && vk==VK_NEXT))//PgDn
-					{
-						intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
-						ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
-						ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-						if (Cur)
-						{
-							if (*Cur->ArcName)
-							{
-								wchar_t arc[MAX_PATH];
-								lstrcpy(arc,ipc.TempDirectory);
-								lstrcat(arc,Cur->ArcName);
-								if(GetFileAttributes(arc)!=INVALID_FILE_ATTRIBUTES)
-								{
-									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
-									FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),L"\\",nullptr,ArcliteGuid,arc};
-									Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
-//										Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
-									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
-									return true;
-								}
-							}
-						}
-						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
-						MessageBeep(MB_OK);
-						return true;
-					}
-					else if ((isCtrl && vk==VK_HOME) || (isCtrlShift && vk==VK_HOME))
-					{
-						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
-						FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),ipc.TempDirectory,nullptr,{0},nullptr};
-						Info.PanelControl(isCtrl?PANEL_ACTIVE:PANEL_PASSIVE,FCTL_SETPANELDIRECTORY,0,&dirInfo);
-//							Info.SendDlgMessage(hDlg,DM_CLOSE,DlgCANCEL,0);
-						Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
-						return true;
 					}
 				}
 			}
