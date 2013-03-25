@@ -939,7 +939,6 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 							}
 							for (const TiXmlElement *file=plug->FirstChildElement("files")->FirstChildElement("file"); file; file=file->NextSiblingElement("file"))
 							{
-								bool found=false;
 								Buf=CharToWChar(file->Attribute("flags"));
 								if (Buf)
 								{
@@ -960,6 +959,9 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 									{
 										VersionInfo MinFarVer=MAKEFARVERSION(MIN_FAR_MAJOR_VER,MIN_FAR_MINOR_VER,0,MIN_FAR_BUILD,VS_RELEASE);
 										VersionInfo CurFarVer={0,0,0,0};
+										VersionInfo CurVer={0,0,0,0};
+
+										// запрашиваем CurFarVer
 										Buf=CharToWChar(file->Attribute("far_major"));
 										if (Buf)
 										{
@@ -978,77 +980,77 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 											CurFarVer.Build=StringToNumber(Buf,CurFarVer.Build);
 											free(Buf); Buf=nullptr;
 										}
+
 										if (NeedUpdate(MinFarVer,CurFarVer,true))
 										{
-											found=true;
-											CurInfo->MinFarVersion=CurFarVer;
-										}
-									}
-								}
-								if (found)
-								{
-									VersionInfo CurVer={0,0,0,0};
-									Buf=CharToWChar(file->Attribute("version_major"));
-									if (Buf)
-									{
-										CurVer.Major=StringToNumber(Buf,CurVer.Major);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("version_minor"));
-									if (Buf)
-									{
-										CurVer.Minor=StringToNumber(Buf,CurVer.Minor);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("version_revision"));
-									if (Buf)
-									{
-										CurVer.Revision=StringToNumber(Buf,CurVer.Revision);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("version_build"));
-									if (Buf)
-									{
-										CurVer.Build=StringToNumber(Buf,CurVer.Build);
-										free(Buf); Buf=nullptr;
-									}
-									CurInfo->NewVersion=CurVer;
+											// запрашиваем CurVer
+											Buf=CharToWChar(file->Attribute("version_major"));
+											if (Buf)
+											{
+												CurVer.Major=StringToNumber(Buf,CurVer.Major);
+												free(Buf); Buf=nullptr;
+											}
+											Buf=CharToWChar(file->Attribute("version_minor"));
+											if (Buf)
+											{
+												CurVer.Minor=StringToNumber(Buf,CurVer.Minor);
+												free(Buf); Buf=nullptr;
+											}
+											Buf=CharToWChar(file->Attribute("version_revision"));
+											if (Buf)
+											{
+												CurVer.Revision=StringToNumber(Buf,CurVer.Revision);
+												free(Buf); Buf=nullptr;
+											}
+											Buf=CharToWChar(file->Attribute("version_build"));
+											if (Buf)
+											{
+												CurVer.Build=StringToNumber(Buf,CurVer.Build);
+												free(Buf); Buf=nullptr;
+											}
 
-									Buf=CharToWChar(file->Attribute("id"));
-									if (Buf)
-									{
-										lstrcpy(CurInfo->fid,Buf);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("date_added"));
-									if (Buf)
-									{
-										CopyReverseTime(CurInfo->NewDate,Buf);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("downloaded_count"));
-									if (Buf)
-									{
-										lstrcpy(CurInfo->Downloads,Buf);
-										free(Buf); Buf=nullptr;
-									}
-									Buf=CharToWChar(file->Attribute("filename"));
-									if (Buf)
-									{
-										lstrcpy(CurInfo->ArcName,Buf);
-										free(Buf); Buf=nullptr;
-									}
-									// если получили имя архива и версия новее...
-									if (CurInfo->ArcName[0])
-									{
-										CurInfo->Flags|=INFO;
+											if (NeedUpdate(CurInfo->NewVersion,CurVer,true))
+											{
+												CurInfo->MinFarVersion=CurFarVer;
+												CurInfo->NewVersion=CurVer;
 
-										if (CmpListGuid(ListGuid,CurInfo->Guid))
-											CurInfo->Flags|=SKIP;
-										else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
-										{
-											CurInfo->Flags|=UPD;
-											Ret=S_UPDATE;
+												Buf=CharToWChar(file->Attribute("id"));
+												if (Buf)
+												{
+													lstrcpy(CurInfo->fid,Buf);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("date_added"));
+												if (Buf)
+												{
+													CopyReverseTime(CurInfo->NewDate,Buf);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("downloaded_count"));
+												if (Buf)
+												{
+													lstrcpy(CurInfo->Downloads,Buf);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("filename"));
+												if (Buf)
+												{
+													lstrcpy(CurInfo->ArcName,Buf);
+													free(Buf); Buf=nullptr;
+												}
+												// если получили имя архива и версия новее...
+												if (CurInfo->ArcName[0])
+												{
+													CurInfo->Flags|=INFO;
+													if (CmpListGuid(ListGuid,CurInfo->Guid))
+														CurInfo->Flags|=SKIP;
+													else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
+													{
+														CurInfo->Flags|=UPD;
+														Ret=S_UPDATE;
+													}
+												}
+											}
 										}
 									}
 								}
@@ -1158,7 +1160,7 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 	for (size_t i=0,ii=0; i<ipc.CountModules; i++)
 	{
 		ModuleInfo *Cur=&ipc.Modules[i];
-		if ((Cur->Flags&INFO)||opt.ShowDisable)
+		if ((GetStatus()!=S_COMPLET&&(Cur->Flags&INFO))||(GetStatus()==S_COMPLET&&(Cur->Flags&ARC))||opt.ShowDisable)
 		{
 			wchar_t Buf[MAX_PATH];
 			struct FarListItem Item={};
@@ -1560,6 +1562,15 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 								MessageBeep(MB_OK);
 							return true;
 						}
+						else if (vk==VK_INSERT)
+						{
+							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+							if (Cur)
+								FSF.CopyToClipboard(FCT_STREAM,Cur->ModuleName);
+							return true;
+						}
 					}
 				}
 				if (Param1==DlgLIST)
@@ -1679,6 +1690,12 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			}
 			else if (Param1==DlgCANCEL || Param1==-1)
 			{
+				if (GetStatus()==S_DOWNLOAD)
+				{
+					LPCWSTR Items[]={MSG(MName),MSG(MAskCancelDownload)};
+					if (Info.Message(&MainGuid,&MsgAskCancelDownloadGuid,FMSG_MB_YESNO|FMSG_WARNING,nullptr,Items,ARRAYSIZE(Items),0))
+						return false;
+				}
 				SetStatus(S_NONE);
 				ret=true;
 			}
@@ -2082,8 +2099,12 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 	opt.Auto=0;
 	CleanTime();
 	WaitEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+	HANDLE hScreen=nullptr;
 	for (;;)
 	{
+		hScreen=Info.SaveScreen(0,0,-1,-1);
+		LPCWSTR Items[]={MSG(MName),MSG(MWait)};
+		Info.Message(&MainGuid,&MsgWaitGuid, 0, nullptr, Items, ARRAYSIZE(Items), 0);
 		// качаем листы с данными для обновления
 		// т.к. сервак часто в ауте, будем ждать коннекта не более n сек
 		if (WaitForSingleObject(WaitEvent,opt.Wait*1000)!=WAIT_OBJECT_0)
@@ -2113,6 +2134,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 					err=MSG(MCantConnect);
 					break;
 			}
+			Info.RestoreScreen(hScreen);
 			LPCWSTR Items[]={MSG(MName),err};
 			if (Info.Message(&MainGuid,&MsgErrGuid, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 0))
 			{
@@ -2124,6 +2146,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 		}
 		else
 		{
+			Info.RestoreScreen(hScreen);
 			CloseHandle(WaitEvent);
 			break;
 		}
@@ -2285,6 +2308,13 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 									if(GetFileAttributes(local_arc)!=INVALID_FILE_ATTRIBUTES)
 									{
 										bool Result=false;
+										wchar_t BakName[MAX_PATH];
+										if (MInfo[i].Guid!=FarGuid)
+										{
+											lstrcat(lstrcpy(BakName,ipc.TempDirectory),StrRChr(MInfo[i].ModuleName,nullptr,L'\\')+1);
+											CopyFile(MInfo[i].ModuleName,BakName,FALSE);
+											DeleteFile(MInfo[i].ModuleName);
+										}
 										while(!Result)
 										{
 											mprintf(L"Unpacking %-50s",arc);
@@ -2316,15 +2346,20 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										{
 											TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
 											mprintf(L"OK\n");
+											if (MInfo[i].Guid!=FarGuid)
+												DeleteFile(BakName);
 											if (ipc.DelAfterInstall==1 || (ipc.DelAfterInstall==2&&i==0))
-											{
 												DeleteFile(local_arc);
-											}
 										}
 										else
 										{
 											TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 											mprintf(L"error\n");
+											if (MInfo[i].Guid!=FarGuid)
+											{
+												CopyFile(BakName,MInfo[i].ModuleName,FALSE);
+												DeleteFile(BakName);
+											}
 										}
 									}
 								}
@@ -2387,7 +2422,6 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 						mprintf(L"Error %d",GetLastError());
 					}
 					mprintf(L"\n");
-
 					CloseHandle(pi.hThread);
 					CloseHandle(pi.hProcess);
 				}
