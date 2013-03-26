@@ -2344,8 +2344,15 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										}
 										if(Result)
 										{
-											TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
-											mprintf(L"OK\n");
+											{
+												TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+												mprintf(L"OK\n");
+											}
+											if (GetFileAttributes(MInfo[i].ModuleName)==INVALID_FILE_ATTRIBUTES)
+											{
+												TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
+												mprintf(L"Warning: %s incorrectly installed\n",MInfo[i].ArcName);
+											}
 											if (MInfo[i].Guid!=FarGuid)
 												DeleteFile(BakName);
 											if (ipc.DelAfterInstall==1 || (ipc.DelAfterInstall==2&&i==0))
