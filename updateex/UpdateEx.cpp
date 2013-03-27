@@ -1118,7 +1118,14 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 	if (Cur)
 	{
 		wchar_t Buf[MAX_PATH];
-		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Cur->Description);
+		if (lstrlen(Cur->Description)>(80-2-2))
+		{
+			lstrcpyn(Buf,Cur->Description,80-2-2-3);
+			lstrcat(Buf,L"...");
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Buf);
+		}
+		else
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Cur->Description);
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,Cur->Author);
 		lstrcpy(Buf,Cur->ModuleName);
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,FSF.TruncPathStr(Buf,80-2-2));
@@ -1735,7 +1742,7 @@ bool ShowModulesDialog()
 		/* 1*/{DI_LISTBOX,    1, 1,78,16, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
 		/* 2*/{DI_TEXT,      -1,17, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
 		/* 3*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,       DIF_WORDWRAP|DIF_SHOWAMPERSAND, L"",0,0},
 		/* 5*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 6*/{DI_TEXT,       2,21,78,21,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 7*/{DI_TEXT,      -1,22, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
