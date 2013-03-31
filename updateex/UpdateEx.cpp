@@ -721,7 +721,7 @@ bool StrToGuid(const wchar_t *Value,GUID &Guid)
 wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
 {
 	if (Value)
-		FSF.sprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
+		wsprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
 	return Value;
 }
 
@@ -2211,6 +2211,39 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 	return 0;
 }
 
+void Exec(bool bPreInstall, GUID *Guid, wchar_t *Config, wchar_t *CurDirectory)
+{
+	if (GetFileAttributes(Config)==INVALID_FILE_ATTRIBUTES)
+		return;
+
+	wchar_t exec[4096],execExp[8192];
+	wchar_t guid[37]=L"";
+	GetPrivateProfileString((bPreInstall?L"PreInstall":L"PostInstall"),(Guid?GuidToStr(*Guid,guid):L"common"),L"",exec,ARRAYSIZE(exec),Config);
+	if(*exec)
+	{
+		ExpandEnvironmentStrings(exec,execExp,ARRAYSIZE(execExp));
+		STARTUPINFO si={sizeof(si)};
+		PROCESS_INFORMATION pi;
+		{
+			TextColor color(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_INTENSITY);
+			mprintf(L"\nExecuting %-50.50s",execExp);
+		}
+		if(CreateProcess(nullptr,execExp,nullptr,nullptr,TRUE,0,nullptr,CurDirectory,&si,&pi))
+		{
+			TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+			mprintf(L"OK\n");
+			WaitForSingleObject(pi.hProcess,INFINITE);
+		}
+		else
+		{
+			TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
+			mprintf(L"Error %d\n",GetLastError());
+		}
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+	}
+}
+
 EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 {
 	ifn.Load();
@@ -2299,6 +2332,11 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 					}
 					else
 					{
+						wchar_t CurDirectory[MAX_PATH];
+						GetModuleDir(ipc.PluginModule,CurDirectory);
+						bool bPreInstall=true;
+						Exec(bPreInstall,nullptr,ipc.Config,CurDirectory);
+
 						for (size_t i=0; i<ipc.CountModules; i++)
 						{
 							if (MInfo[i].Flags&UPD)
@@ -2314,6 +2352,9 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 
 									if(GetFileAttributes(local_arc)!=INVALID_FILE_ATTRIBUTES)
 									{
+										bPreInstall=true;
+										Exec(bPreInstall,&MInfo[i].Guid,ipc.Config,destpath);
+
 										bool Result=false;
 										wchar_t BakName[MAX_PATH];
 										if (MInfo[i].Guid!=FarGuid)
@@ -2324,7 +2365,8 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										}
 										while(!Result)
 										{
-											mprintf(L"Unpacking %-50s",arc);
+											TextColor color(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
+											mprintf(L"\nUnpacking %-50s",arc);
 
 											if(!extract(hSevenZip,local_arc,destpath))
 											{
@@ -2364,6 +2406,9 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 												DeleteFile(BakName);
 											if (ipc.DelAfterInstall==1 || (ipc.DelAfterInstall==2&&i==0))
 												DeleteFile(local_arc);
+
+											bPreInstall=false;
+											Exec(bPreInstall,&MInfo[i].Guid,ipc.Config,destpath);
 										}
 										else
 										{
@@ -2382,34 +2427,9 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 						FreeLibrary(hSevenZip);
 						if (bDelSevenZip)
 							DeleteFile(SevenZip);
-					}
-					wchar_t exec[2048],execExp[4096];
-					GetPrivateProfileString(L"events",L"PostInstall",L"",exec,ARRAYSIZE(exec),ipc.Config);
-					if(*exec)
-					{
-						ExpandEnvironmentStrings(exec,execExp,ARRAYSIZE(execExp));
-						STARTUPINFO si={sizeof(si)};
-						PROCESS_INFORMATION pi;
-						{
-							TextColor color(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_INTENSITY);
-							mprintf(L"\nExecuting %-50.50s",execExp);
-						}
-						wchar_t PluginDirectory[MAX_PATH];
-						GetModuleDir(ipc.PluginModule,PluginDirectory);
-						if(CreateProcess(nullptr,execExp,nullptr,nullptr,TRUE,0,nullptr,PluginDirectory,&si,&pi))
-						{
-							TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
-							mprintf(L"OK\n\n");
-							WaitForSingleObject(pi.hProcess,INFINITE);
-						}
-						else
-						{
-							TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
-							mprintf(L"Error %d",GetLastError());
-						}
-						mprintf(L"\n");
-						CloseHandle(pi.hThread);
-						CloseHandle(pi.hProcess);
+
+						bPreInstall=false;
+						Exec(bPreInstall,nullptr,ipc.Config,CurDirectory);
 					}
 					if(Pos!=-1)
 					{

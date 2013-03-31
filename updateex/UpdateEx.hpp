@@ -18,7 +18,7 @@
 
 #define MAJOR_VER 3
 #define MINOR_VER 1
-#define BUILD 21
+#define BUILD 22
 
 #define _W(arg) L##arg
 #define _STR(arg) _W(#arg)
