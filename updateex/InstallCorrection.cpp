@@ -129,7 +129,6 @@ bool InstallCorrection(const wchar_t *ModuleName)
 	{
 		wchar_t CurDir[MAX_PATH];
 		wchar_t FileName[MAX_PATH];
-		GetModuleDir(ModuleName,CurDir);
 		if (FindFile(GetModuleDir(ModuleName,CurDir),StrRChr(ModuleName,nullptr,L'\\')+1,FileName))
 		{
 			wchar_t SrcDir[MAX_PATH];
