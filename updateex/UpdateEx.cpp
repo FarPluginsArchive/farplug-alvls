@@ -14,6 +14,7 @@
 #include "HideCursor.hpp"
 #include "TextColor.hpp"
 
+
 //http://www.farmanager.com/nightly/update3.php?p=32
 LPCWSTR FarRemoteSrv=L"www.farmanager.com";
 LPCWSTR FarRemotePath=L"/nightly/";
@@ -66,8 +67,6 @@ struct ModuleInfo
 
 struct IPC
 {
-	wchar_t PluginModule[MAX_PATH];
-	//---
 	wchar_t FarParams[MAX_PATH*4];
 	wchar_t TempDirectory[MAX_PATH];
 	wchar_t Config[MAX_PATH];
@@ -86,6 +85,8 @@ void FreeModulesInfo()
 	ipc.Modules=nullptr;
 	ipc.CountModules=0;
 }
+
+wchar_t PluginModule[MAX_PATH];
 
 struct OPT
 {
@@ -357,6 +358,7 @@ bool DownloadFile(LPCWSTR Srv,LPCWSTR RemoteFile,LPCWSTR LocalName=nullptr,bool 
 
 bool Clean()
 {
+	DeleteFile(PluginModule);
 	RemoveDirectory(ipc.TempDirectory);
 	return true;
 }
@@ -471,10 +473,24 @@ VOID StartUpdate(bool Thread)
 		}
 		LocalFree(Argv);
 
+		bool bSelf=false;
+		for (size_t i=0; i<ipc.CountModules; i++)
+		{
+			if (ipc.Modules[i].Guid==MainGuid)
+			{
+				if (ipc.Modules[i].Flags&UPD)
+				{
+					if (CopyFile(ipc.Modules[i].ModuleName,PluginModule,FALSE))
+						bSelf=true;
+				}
+				break;
+			}
+		}
+
 		wchar_t WinDir[MAX_PATH];
 		GetWindowsDirectory(WinDir,ARRAYSIZE(WinDir));
 		BOOL IsWow64=FALSE;
-		FSF.sprintf(cmdline,L"%s\\%s\\rundll32.exe \"%s\",RestartFAR %I64d %I64d",WinDir,ifn.IsWow64Process(GetCurrentProcess(),&IsWow64)&&IsWow64?L"SysWOW64":L"System32",ipc.PluginModule,reinterpret_cast<INT64>(ProcDup),reinterpret_cast<INT64>(&ipc));
+		FSF.sprintf(cmdline,L"%s\\%s\\rundll32.exe \"%s\",RestartFAR %I64d %I64d",WinDir,ifn.IsWow64Process(GetCurrentProcess(),&IsWow64)&&IsWow64?L"SysWOW64":L"System32",bSelf?PluginModule:Info.ModuleName,reinterpret_cast<INT64>(ProcDup),reinterpret_cast<INT64>(&ipc));
 
 		STARTUPINFO si={sizeof(si)};
 		PROCESS_INFORMATION pi;
@@ -498,7 +514,6 @@ VOID StartUpdate(bool Thread)
 				WaitForSingleObject(hEvent,INFINITE);
 				CloseHandle(hEvent);
 			}
-//			SaveTime();
 		}
 		else
 		{
@@ -1149,7 +1164,15 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 				else lstrcpy(Buf,MSG(MIsNonInfo));
 			}
 		}
-		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf);
+		if (lstrlen(Buf)>(80-2-2))
+		{
+			wchar_t Buf2[80];
+			lstrcpyn(Buf2,Buf,80-2-2-3);
+			lstrcat(Buf2,L"...");
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf2);
+		}
+		else
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf);
 		Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 	}
 }
@@ -1288,7 +1311,7 @@ bool ShowSendModulesDialog(ModuleInfo *pInfo)
 {
 	wchar_t Guid[37]=L"";
 	bool bUnknown=true;
-	if (pInfo->ID && !(pInfo->Flags&ANSI) && !(pInfo->Flags&STD))
+	if (pInfo->Guid!=FarGuid && !(pInfo->Flags&ANSI) && !(pInfo->Flags&STD))
 	{
 		GuidToStr(pInfo->Guid,Guid);
 		bUnknown=false;
@@ -1524,7 +1547,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 						{
 							if (vk==VK_RETURN)
 							{
-								if (Cur->ID==0 || (Cur->Flags&STD))
+								if (Cur->Guid==FarGuid || (Cur->Flags&STD))
 								{
 									wchar_t url[]=L"http://www.farmanager.com/nightly.php";
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
@@ -1783,8 +1806,9 @@ VOID ReadSettings()
 	if (ipc.TempDirectory[lstrlen(ipc.TempDirectory)-1]!=L'\\') lstrcat(ipc.TempDirectory,L"\\");
 	lstrcat(lstrcpy(ipc.FarUpdateList,ipc.TempDirectory),FarUpdateFile);
 	lstrcat(lstrcpy(ipc.PlugUpdateList,ipc.TempDirectory),PlugUpdateFile);
-	lstrcpy(ipc.PluginModule,Info.ModuleName);
-	lstrcat(lstrcpy(ipc.Config,ipc.PluginModule),L".config");
+	lstrcat(lstrcpy(ipc.Config,Info.ModuleName),L".config");
+
+	lstrcat(lstrcpy(PluginModule,ipc.TempDirectory),StrRChr(Info.ModuleName,nullptr,L'\\')+1);
 }
 
 intptr_t Config()
@@ -1881,7 +1905,7 @@ DWORD WINAPI NotifyProc(LPVOID)
 	ZeroMemory(&tray_wc, sizeof(tray_wc));
 	ZeroMemory(&tray_icondata, sizeof(tray_icondata));
 
-	tray_icon=ExtractIcon(GetModuleHandle(nullptr), ipc.PluginModule, 0);
+	tray_icon=ExtractIcon(GetModuleHandle(nullptr), Info.ModuleName, 0);
 
 	tray_wc.cbSize=sizeof(WNDCLASSEX);
 	tray_wc.style=CS_HREDRAW|CS_VREDRAW;
@@ -2093,6 +2117,7 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 		hNotifyThread=nullptr;
 	}
 	FreeModulesInfo();
+	Clean();
 }
 
 HANDLE WINAPI OpenW(const OpenInfo* oInfo)
@@ -2218,7 +2243,7 @@ void Exec(bool bPreInstall, GUID *Guid, wchar_t *Config, wchar_t *CurDirectory)
 
 	wchar_t exec[4096],execExp[8192];
 	wchar_t guid[37]=L"";
-	GetPrivateProfileString((bPreInstall?L"PreInstall":L"PostInstall"),(Guid?GuidToStr(*Guid,guid):L"common"),L"",exec,ARRAYSIZE(exec),Config);
+	GetPrivateProfileString((Guid?GuidToStr(*Guid,guid):L"common"),(bPreInstall?L"PreInstall":L"PostInstall"),L"",exec,ARRAYSIZE(exec),Config);
 	if(*exec)
 	{
 		ExpandEnvironmentStrings(exec,execExp,ARRAYSIZE(execExp));
@@ -2243,6 +2268,8 @@ void Exec(bool bPreInstall, GUID *Guid, wchar_t *Config, wchar_t *CurDirectory)
 		CloseHandle(pi.hProcess);
 	}
 }
+
+#include "InstallCorrection.cpp"
 
 EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 {
@@ -2291,25 +2318,26 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 					mprintf(L"\n\n\n");
 
 					HMODULE hSevenZip=nullptr;
-					wchar_t SevenZip[MAX_PATH];
+					wchar_t SevenZip[MAX_PATH]=L"";
+					wchar_t TmpSevenZip[MAX_PATH]=L"";
 					bool bDelSevenZip=false;
 
-					GetModuleDir(ipc.PluginModule,SevenZip);
-					lstrcat(SevenZip,L"7z.dll");
-
+					for (size_t i=0; i<ipc.CountModules; i++)
+					{
+						if (MInfo[i].Guid==MainGuid)
+						{
+							GetModuleDir(MInfo[i].ModuleName,SevenZip);
+							lstrcat(SevenZip,L"7z.dll");
+						}
+						if (MInfo[i].Guid==ArcliteGuid)
+						{
+							GetModuleDir(MInfo[i].ModuleName,TmpSevenZip);
+							lstrcat(TmpSevenZip,L"7z.dll");
+						}
+					}
 					if (!(hSevenZip=LoadLibrary(SevenZip)))
 					{
-						wchar_t tmp[MAX_PATH];
-						for (size_t i=0; i<ipc.CountModules; i++)
-						{
-							if (MInfo[i].Guid==ArcliteGuid)
-							{
-								GetModuleDir(MInfo[i].ModuleName,tmp);
-								lstrcat(tmp,L"7z.dll");
-								break;
-							}
-						}
-						if (GetFileAttributes(tmp)==INVALID_FILE_ATTRIBUTES)
+						if (GetFileAttributes(TmpSevenZip)==INVALID_FILE_ATTRIBUTES)
 						{
 							if (!(hSevenZip=LoadLibrary(lstrcat(get_7z_path(HKEY_CURRENT_USER,SevenZip),L"7z.dll"))))
 								hSevenZip=LoadLibrary(lstrcat(get_7z_path(HKEY_LOCAL_MACHINE,SevenZip),L"7z.dll"));
@@ -2317,7 +2345,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 						else
 						{
 							lstrcat(lstrcpy(SevenZip,ipc.TempDirectory),L"7z.dll");
-							if (CopyFile(tmp,SevenZip,FALSE))
+							if (CopyFile(TmpSevenZip,SevenZip,FALSE))
 							{
 								bDelSevenZip=true;
 								hSevenZip=LoadLibrary(SevenZip);
@@ -2333,7 +2361,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 					else
 					{
 						wchar_t CurDirectory[MAX_PATH];
-						GetModuleDir(ipc.PluginModule,CurDirectory);
+						GetModuleDir(MInfo[0].ModuleName,CurDirectory);
 						bool bPreInstall=true;
 						Exec(bPreInstall,nullptr,ipc.Config,CurDirectory);
 
@@ -2397,7 +2425,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 												TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
 												mprintf(L"OK\n");
 											}
-											if (GetFileAttributes(MInfo[i].ModuleName)==INVALID_FILE_ATTRIBUTES)
+											if (!InstallCorrection(MInfo[i].ModuleName))
 											{
 												TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 												mprintf(L"Warning: %s incorrectly installed\n",MInfo[i].ArcName);

@@ -15,4 +15,3 @@
 #include "memory.hpp"
 
 extern PluginStartupInfo Info;
-

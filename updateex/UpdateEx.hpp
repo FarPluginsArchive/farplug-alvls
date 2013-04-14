@@ -18,13 +18,13 @@
 
 #define MAJOR_VER 3
 #define MINOR_VER 1
-#define BUILD 22
+#define BUILD 23
 
 #define _W(arg) L##arg
 #define _STR(arg) _W(#arg)
 #define STR(arg) _STR(arg)
 
-#define FARVER L"3"
+#define FARVER L"3.0"
 
 #ifdef _WIN64
 #define PLATFORM L" x64"
