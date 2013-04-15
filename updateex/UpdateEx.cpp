@@ -2377,7 +2377,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 								// коррекция
 								{
 									int len=lstrlen(destpath);
-									if (len>4 && !lstrcmpi(&destpath[len-4],L"bin\\"))
+									if (len>5 && !lstrcmpi(&destpath[len-5],L"\\bin\\"))
 										destpath[len-4]=0;
 								}
 								const wchar_t *arc=MInfo[i].ArcName;
