@@ -287,8 +287,8 @@ public:
 			return hr;
 		if (prop_is_dir.vt == VT_BOOL && prop_is_dir.boolVal != VARIANT_FALSE) {
 			//Creating the directory structure
-			SHCreateDirectoryExW(NULL, _absolute_path, NULL);
-			*out_stream = NULL;
+			SHCreateDirectoryExW(nullptr, _absolute_path, nullptr);
+			*out_stream = nullptr;
 			return S_OK;
 		}
 
@@ -296,11 +296,11 @@ public:
 		wchar_t dir_path[MAX_PATH];
 		lstrcpy(dir_path,_absolute_path);
 		*(StrRChr(dir_path,nullptr,L'\\'))=0;
-		SHCreateDirectoryEx(NULL, dir_path, NULL);
+		SHCreateDirectoryEx(nullptr, dir_path, nullptr);
 
 		//Open write stream
 		CComPtr<IStream> write_stream;
-		hr = SHCreateStreamOnFileEx(_absolute_path, STGM_CREATE | STGM_WRITE, FILE_ATTRIBUTE_NORMAL, TRUE, NULL, &write_stream);
+		hr = SHCreateStreamOnFileEx(_absolute_path, STGM_CREATE | STGM_WRITE, FILE_ATTRIBUTE_NORMAL, TRUE, nullptr, &write_stream);
 		if (hr != S_OK)
 			return hr;
 
@@ -322,9 +322,9 @@ public:
 		if (_attrib != static_cast<DWORD>(-1))
 			SetFileAttributes(_absolute_path, _attrib);
 		if (_modified_time.dwHighDateTime || _modified_time.dwLowDateTime) {
-			const HANDLE file = CreateFile(_absolute_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			const HANDLE file = CreateFile(_absolute_path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 			if (file != INVALID_HANDLE_VALUE) {
-				SetFileTime(file, NULL, NULL, &_modified_time);
+				SetFileTime(file, nullptr, nullptr, &_modified_time);
 				CloseHandle(file);
 			}
 		}
@@ -354,7 +354,7 @@ bool extract(HMODULE seven_dll,const wchar_t* src_path, const wchar_t* dst_path)
 		HANDLE hFile=CreateFileW(src_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN, 0 );
 		if (hFile!=INVALID_HANDLE_VALUE)
 		{
-			HANDLE hMap=CreateFileMappingW(hFile, 0, PAGE_READONLY,0,4,0);
+			HANDLE hMap=CreateFileMappingW(hFile, 0, PAGE_READONLY,0,64,0);
 			CloseHandle(hFile);
 			if (hMap)
 			{
@@ -362,14 +362,23 @@ bool extract(HMODULE seven_dll,const wchar_t* src_path, const wchar_t* dst_path)
 				CloseHandle(hMap);
 
 				//Get archive format
-				const GUID* guid_format = NULL;
-				if (data[0] == 'P' && data[1] == 'K')
+				const GUID* guid_format= nullptr;
+				if (data[0]==0x50 && data[1]==0x4B)
 					guid_format = &CLSID_CFormatZip;
-				else if (data[0] == 'R' && data[1] == 'a' && data[2] == 'r')
-					guid_format = &CLSID_CFormatRar;
-				else if (data[0] == '7' && data[1] == 'z')
+				else if (data[0]==0x37 && data[1]==0x7A)
 					guid_format = &CLSID_CFormat7z;
-
+				else
+				{
+					const unsigned char rar_header[] = { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 };
+					for (size_t i=0; i<64; i++)
+					{
+						if (!memcmp(rar_header, data+i, sizeof(rar_header)/sizeof(rar_header[0])))
+						{
+							guid_format = &CLSID_CFormatRar;
+							break;
+						}
+					}
+				}
 				UnmapViewOfFile(data);
 
 				CComPtr<IInArchive> in_archive;
@@ -377,15 +386,15 @@ bool extract(HMODULE seven_dll,const wchar_t* src_path, const wchar_t* dst_path)
 				if (hr == S_OK)
 				{
 					CComPtr<IStream> stream;
-					hr=SHCreateStreamOnFileEx(src_path,STGM_READ,FILE_ATTRIBUTE_NORMAL,0,NULL,&stream);
+					hr=SHCreateStreamOnFileEx(src_path,STGM_READ,FILE_ATTRIBUTE_NORMAL,0,nullptr,&stream);
 					if (hr == S_OK)
 					{
 						CComPtr<IInStreamWrapper> in_stream = new IInStreamWrapper(stream);
-						hr = in_archive->Open(in_stream, 0, NULL);
+						hr = in_archive->Open(in_stream, 0, nullptr);
 						if (hr == S_OK)
 						{
 							CComPtr<IArchiveExtractCallbackWrapper> extract_cb = new IArchiveExtractCallbackWrapper(in_archive, dst_path);
-							hr = in_archive->Extract(NULL, static_cast<UInt32>(-1), false, extract_cb);
+							hr = in_archive->Extract(nullptr, static_cast<UInt32>(-1), false, extract_cb);
 							if (hr == S_OK)
 								ret=true;
 						}
@@ -408,14 +417,14 @@ wchar_t *get_7z_path(const HKEY key, wchar_t *path)
 	if (RegOpenKeyEx(key, L"Software\\7-Zip", 0, KEY_READ, &reg_key) == ERROR_SUCCESS)
 	{
 		DWORD data_len = 0;
-		if (RegQueryValueEx(reg_key, L"Path", NULL, NULL, NULL, &data_len) != ERROR_SUCCESS)
+		if (RegQueryValueEx(reg_key, L"Path", nullptr, nullptr, nullptr, &data_len) != ERROR_SUCCESS)
 		{
 			RegCloseKey(reg_key);
 			path[0]=0;
 		}
 		else
 		{
-			if (RegQueryValueEx(reg_key, L"Path", NULL, NULL, reinterpret_cast<LPBYTE>(&path[0]), &data_len) != ERROR_SUCCESS)
+			if (RegQueryValueEx(reg_key, L"Path", nullptr, nullptr, reinterpret_cast<LPBYTE>(&path[0]), &data_len) != ERROR_SUCCESS)
 				path[0]=0;
 			RegCloseKey(reg_key);
 		}

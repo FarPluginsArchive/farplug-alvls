@@ -32,7 +32,7 @@ bool FindFile(const wchar_t *Dir, const wchar_t *Pattern, wchar_t *FileName)
 				}
 				else
 				{
-					if (!StrCmpI(FindData.cFileName,Pattern))
+					if (!lstrcmpi(FindData.cFileName,Pattern))
 					{
 						lstrcpy(FileName,FindPath);
 						ret=true;

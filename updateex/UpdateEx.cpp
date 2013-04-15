@@ -952,117 +952,120 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 								lstrcpy(CurInfo->pid,Buf);
 								free(Buf); Buf=nullptr;
 							}
-							for (const TiXmlElement *file=plug->FirstChildElement("files")->FirstChildElement("file"); file; file=file->NextSiblingElement("file"))
+							if (const TiXmlElement *filesElem=plug->FirstChildElement("files"))
 							{
-								Buf=CharToWChar(file->Attribute("flags"));
-								if (Buf)
+								for (const TiXmlElement *file=filesElem->FirstChildElement("file"); file; file=file->NextSiblingElement("file"))
 								{
-									enum FILE_FLAG {
-										BINARY = 1,
-										X86 = 8,
-										X64 = 16
-									};
-									DWORD flag=StringToNumber(Buf,flag);
-									free(Buf); Buf=nullptr;
-									if ((flag&BINARY) &&
-#ifdef _WIN64
-											(flag&X64)
-#else
-											(flag&X86)
-#endif
-									)
+									Buf=CharToWChar(file->Attribute("flags"));
+									if (Buf)
 									{
-										VersionInfo MinFarVer=MAKEFARVERSION(MIN_FAR_MAJOR_VER,MIN_FAR_MINOR_VER,0,MIN_FAR_BUILD,VS_RELEASE);
-										VersionInfo CurFarVer={0,0,0,0};
-										VersionInfo CurVer={0,0,0,0};
+										enum FILE_FLAG {
+											BINARY = 1,
+											X86 = 8,
+											X64 = 16
+										};
+										DWORD flag=StringToNumber(Buf,flag);
+										free(Buf); Buf=nullptr;
+										if ((flag&BINARY) &&
+#ifdef _WIN64
+												(flag&X64)
+#else
+												(flag&X86)
+#endif
+										)
+										{
+											VersionInfo MinFarVer=MAKEFARVERSION(MIN_FAR_MAJOR_VER,MIN_FAR_MINOR_VER,0,MIN_FAR_BUILD,VS_RELEASE);
+											VersionInfo CurFarVer={0,0,0,0};
+											VersionInfo CurVer={0,0,0,0};
 
-										// запрашиваем CurFarVer
-										Buf=CharToWChar(file->Attribute("far_major"));
-										if (Buf)
-										{
-											CurFarVer.Major=StringToNumber(Buf,CurFarVer.Major);
-											free(Buf); Buf=nullptr;
-										}
-										Buf=CharToWChar(file->Attribute("far_minor"));
-										if (Buf)
-										{
-											CurFarVer.Minor=StringToNumber(Buf,CurFarVer.Minor);
-											free(Buf); Buf=nullptr;
-										}
-										Buf=CharToWChar(file->Attribute("far_build"));
-										if (Buf)
-										{
-											CurFarVer.Build=StringToNumber(Buf,CurFarVer.Build);
-											free(Buf); Buf=nullptr;
-										}
-
-										if (NeedUpdate(MinFarVer,CurFarVer,true))
-										{
-											// запрашиваем CurVer
-											Buf=CharToWChar(file->Attribute("version_major"));
+											// запрашиваем CurFarVer
+											Buf=CharToWChar(file->Attribute("far_major"));
 											if (Buf)
 											{
-												CurVer.Major=StringToNumber(Buf,CurVer.Major);
+												CurFarVer.Major=StringToNumber(Buf,CurFarVer.Major);
 												free(Buf); Buf=nullptr;
 											}
-											Buf=CharToWChar(file->Attribute("version_minor"));
+											Buf=CharToWChar(file->Attribute("far_minor"));
 											if (Buf)
 											{
-												CurVer.Minor=StringToNumber(Buf,CurVer.Minor);
+												CurFarVer.Minor=StringToNumber(Buf,CurFarVer.Minor);
 												free(Buf); Buf=nullptr;
 											}
-											Buf=CharToWChar(file->Attribute("version_revision"));
+											Buf=CharToWChar(file->Attribute("far_build"));
 											if (Buf)
 											{
-												CurVer.Revision=StringToNumber(Buf,CurVer.Revision);
-												free(Buf); Buf=nullptr;
-											}
-											Buf=CharToWChar(file->Attribute("version_build"));
-											if (Buf)
-											{
-												CurVer.Build=StringToNumber(Buf,CurVer.Build);
+												CurFarVer.Build=StringToNumber(Buf,CurFarVer.Build);
 												free(Buf); Buf=nullptr;
 											}
 
-											if (NeedUpdate(CurInfo->NewVersion,CurVer,true))
+											if (NeedUpdate(MinFarVer,CurFarVer,true))
 											{
-												CurInfo->MinFarVersion=CurFarVer;
-												CurInfo->NewVersion=CurVer;
+												// запрашиваем CurVer
+												Buf=CharToWChar(file->Attribute("version_major"));
+												if (Buf)
+												{
+													CurVer.Major=StringToNumber(Buf,CurVer.Major);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("version_minor"));
+												if (Buf)
+												{
+													CurVer.Minor=StringToNumber(Buf,CurVer.Minor);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("version_revision"));
+												if (Buf)
+												{
+													CurVer.Revision=StringToNumber(Buf,CurVer.Revision);
+													free(Buf); Buf=nullptr;
+												}
+												Buf=CharToWChar(file->Attribute("version_build"));
+												if (Buf)
+												{
+													CurVer.Build=StringToNumber(Buf,CurVer.Build);
+													free(Buf); Buf=nullptr;
+												}
 
-												Buf=CharToWChar(file->Attribute("id"));
-												if (Buf)
+												if (NeedUpdate(CurInfo->NewVersion,CurVer,true))
 												{
-													lstrcpy(CurInfo->fid,Buf);
-													free(Buf); Buf=nullptr;
-												}
-												Buf=CharToWChar(file->Attribute("date_added"));
-												if (Buf)
-												{
-													CopyReverseTime(CurInfo->NewDate,Buf);
-													free(Buf); Buf=nullptr;
-												}
-												Buf=CharToWChar(file->Attribute("downloaded_count"));
-												if (Buf)
-												{
-													lstrcpy(CurInfo->Downloads,Buf);
-													free(Buf); Buf=nullptr;
-												}
-												Buf=CharToWChar(file->Attribute("filename"));
-												if (Buf)
-												{
-													lstrcpy(CurInfo->ArcName,Buf);
-													free(Buf); Buf=nullptr;
-												}
-												// если получили имя архива и версия новее...
-												if (CurInfo->ArcName[0])
-												{
-													CurInfo->Flags|=INFO;
-													if (CmpListGuid(ListGuid,CurInfo->Guid))
-														CurInfo->Flags|=SKIP;
-													else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
+													CurInfo->MinFarVersion=CurFarVer;
+													CurInfo->NewVersion=CurVer;
+
+													Buf=CharToWChar(file->Attribute("id"));
+													if (Buf)
 													{
-														CurInfo->Flags|=UPD;
-														Ret=S_UPDATE;
+														lstrcpy(CurInfo->fid,Buf);
+														free(Buf); Buf=nullptr;
+													}
+													Buf=CharToWChar(file->Attribute("date_added"));
+													if (Buf)
+													{
+														CopyReverseTime(CurInfo->NewDate,Buf);
+														free(Buf); Buf=nullptr;
+													}
+													Buf=CharToWChar(file->Attribute("downloaded_count"));
+													if (Buf)
+													{
+														lstrcpy(CurInfo->Downloads,Buf);
+														free(Buf); Buf=nullptr;
+													}
+													Buf=CharToWChar(file->Attribute("filename"));
+													if (Buf)
+													{
+														lstrcpy(CurInfo->ArcName,Buf);
+														free(Buf); Buf=nullptr;
+													}
+													// если получили имя архива и версия новее...
+													if (CurInfo->ArcName[0])
+													{
+														CurInfo->Flags|=INFO;
+														if (CmpListGuid(ListGuid,CurInfo->Guid))
+															CurInfo->Flags|=SKIP;
+														else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
+														{
+															CurInfo->Flags|=UPD;
+															Ret=S_UPDATE;
+														}
 													}
 												}
 											}
@@ -2049,7 +2052,7 @@ void WINAPI GetGlobalInfoW(GlobalInfo *Info)
 	Info->Version=MAKEFARVERSION(MAJOR_VER,MINOR_VER,0,BUILD,VS_RELEASE);
 	Info->Guid=MainGuid;
 	Info->Title=L"UpdateEx";
-	Info->Description=L"Update plugin for Far Manager v.3";
+	Info->Description=L"Update plugin for Far Manager v.3.0";
 	Info->Author=L"Alex Alabuzhev, Alexey Samlyukov";
 }
 
@@ -2371,6 +2374,12 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 							{
 								wchar_t destpath[MAX_PATH];
 								GetModuleDir(MInfo[i].ModuleName,destpath);
+								// коррекция
+								{
+									int len=lstrlen(destpath);
+									if (len>4 && !lstrcmpi(&destpath[len-4],L"bin\\"))
+										destpath[len-4]=0;
+								}
 								const wchar_t *arc=MInfo[i].ArcName;
 								if (*arc)
 								{
