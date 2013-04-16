@@ -6,6 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <plugin.hpp>
+#include <farcolor.hpp>
 #include <PluginSettings.hpp>
 #include <psapi.h>
 #include <shlwapi.h>

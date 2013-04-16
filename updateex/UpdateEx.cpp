@@ -96,6 +96,7 @@ struct OPT
 	DWORD ShowDisable;
 	DWORD Proxy;
 	DWORD SetActive;
+	DWORD Date;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
 	wchar_t ProxyPass[MAX_PATH];
@@ -136,6 +137,7 @@ struct EventStruct
 
 bool NeedRestart=false;
 DWORD Status=S_NONE;
+size_t CountUpdModules;
 
 SYSTEMTIME SavedTime;
 
@@ -635,7 +637,12 @@ wchar_t *GetStrFileTime(FILETIME *LastWriteTime, wchar_t *Time)
 	FileTimeToSystemTime(&LocalTime,&ModificTime);
 	// для Time достаточно [11] !!!
 	if (Time)
-		FSF.sprintf(Time,L"%02d-%02d-%04d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear);
+	{
+		if (opt.Date)
+			FSF.sprintf(Time,L"%04d-%02d-%02d",ModificTime.wYear,ModificTime.wMonth,ModificTime.wDay);
+		else
+			FSF.sprintf(Time,L"%02d-%02d-%04d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear);
+	}
 	return Time;
 }
 
@@ -871,7 +878,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			ipc.Modules[0].NewVersion.Build=GetPrivateProfileInt(Section,L"build",-1,ipc.FarUpdateList);
 			ipc.Modules[0].MinFarVersion=ipc.Modules[0].NewVersion;
 			GetPrivateProfileString(Section,L"date",L"",Buf,ARRAYSIZE(Buf),ipc.FarUpdateList);
-			CopyReverseTime(ipc.Modules[0].NewDate,Buf);
+			opt.Date?lstrcpyn(ipc.Modules[0].NewDate,Buf,11):CopyReverseTime(ipc.Modules[0].NewDate,Buf);
 			GetPrivateProfileString(Section,L"arc",L"",ipc.Modules[0].ArcName,ARRAYSIZE(ipc.Modules[0].ArcName),ipc.FarUpdateList);
 			// если получили имя архива и версия новее...
 			if (ipc.Modules[0].ArcName[0])
@@ -1040,7 +1047,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 													Buf=CharToWChar(file->Attribute("date_added"));
 													if (Buf)
 													{
-														CopyReverseTime(CurInfo->NewDate,Buf);
+														opt.Date?lstrcpyn(CurInfo->NewDate,Buf,11):CopyReverseTime(CurInfo->NewDate,Buf);
 														free(Buf); Buf=nullptr;
 													}
 													Buf=CharToWChar(file->Attribute("downloaded_count"));
@@ -1103,27 +1110,26 @@ enum {
 
 void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD Percent=-1)
 {
+	wchar_t Ver[80], NewVer[80], Status[80];
+
 	if ((Cur->Flags&STD) || !(Cur->Flags&INFO) || (GetStatus()==S_COMPLET && !(Cur->Flags&ARC)))
 		Item.Flags|=LIF_GRAYED;
 	if (Cur->Flags&UPD)
+	{
 		Item.Flags|=(LIF_CHECKED|0x2b);
+		CountUpdModules++;
+	}
 	else if (Cur->Flags&SKIP)
 		Item.Flags|=(LIF_CHECKED|0x2d);
-	wchar_t Ver[80], NewVer[80], Status[80];
+
 	FSF.sprintf(Ver,L"%d.%d.%d.%d",Cur->Version.Major,Cur->Version.Minor,Cur->Version.Revision,Cur->Version.Build);
-	if (Cur->Flags&INFO)
-		FSF.sprintf(NewVer,L"%d.%d.%d.%d",Cur->NewVersion.Major,Cur->NewVersion.Minor,Cur->NewVersion.Revision,Cur->NewVersion.Build);
-	else
-		NewVer[0]=0;
-	if (Percent!=-1 || GetStatus()==S_COMPLET)
-	{
-		if (Cur->Flags&ERR) lstrcpy(Status,MSG(MError));
-		else if (Cur->Flags&ARC) lstrcpy(Status,MSG(MLoaded));
-		else if (GetStatus()==S_COMPLET) Status[0]=0;
-		else FSF.sprintf(Status,L"%3d%%",Percent);
-	}
-	else
-		Status[0]=0;
+	if (Cur->Flags&INFO) FSF.sprintf(NewVer,L"%d.%d.%d.%d",Cur->NewVersion.Major,Cur->NewVersion.Minor,Cur->NewVersion.Revision,Cur->NewVersion.Build);
+	else NewVer[0]=0;
+
+	if (Cur->Flags&ERR) lstrcpy(Status,MSG(MError));
+	else if (Cur->Flags&ARC) lstrcpy(Status,MSG(MLoaded));
+	else if (Percent!=-1) FSF.sprintf(Status,L"%3d%%",Percent);
+	else Status[0]=0;
 
 	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
 	Item.Text=Buf;
@@ -1182,6 +1188,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 
 bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 {
+	CountUpdModules=0;
 	struct FarListInfo ListInfo={sizeof(FarListInfo)};
 	Info.SendDlgMessage(hDlg,DM_LISTINFO,DlgLIST,&ListInfo);
 	if (ListInfo.ItemsNumber)
@@ -1224,6 +1231,10 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 		ListPos.TopPos=ListInfo.TopPos;
 		Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&ListPos);
 	}
+	wchar_t Buf[64]=L"";
+	if (CountUpdModules)
+		FSF.sprintf(Buf,L" %d ",CountUpdModules);
+	Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 	return true;
 }
 
@@ -1293,19 +1304,19 @@ bool DownloadUpdates()
 	if (NeedRestart)
 	{
 		SetStatus(S_COMPLET);
-		struct WindowType Type={sizeof(WindowType)};
-		if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
-		{
-			struct DialogInfo DInfo={sizeof(DialogInfo)};
-			if (hDlg && Info.SendDlgMessage(hDlg,DM_GETDIALOGINFO,0,&DInfo) && ModulesDlgGuid==DInfo.Id)
-				Info.SendDlgMessage(hDlg,DN_UPDDLG,0,0);
-		}
 	}
 	else
 	{
 		// тогда восстановим статус
 		if (bUPD)
 			SetStatus(S_UPTODATE);
+	}
+	struct WindowType Type={sizeof(WindowType)};
+	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
+	{
+		struct DialogInfo DInfo={sizeof(DialogInfo)};
+		if (hDlg && Info.SendDlgMessage(hDlg,DM_GETDIALOGINFO,0,&DInfo) && ModulesDlgGuid==DInfo.Id)
+			Info.SendDlgMessage(hDlg,DN_UPDDLG,0,0);
 	}
 	return true;
 }
@@ -1417,6 +1428,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			else
 				MakeList(hDlg);
 			MakeListItemInfo(hDlg,0);
+			Info.SendDlgMessage(hDlg,DM_SETMOUSEEVENTNOTIFY,1,0);
 			break;
 		}
 
@@ -1441,12 +1453,113 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			}
 			break;
 
+	/************************************************************************/
+
+		case DN_CTLCOLORDLGITEM:
+			if (Param1==DlgSEP2)
+			{
+				FarColor Color;
+				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
+
+				if (CountUpdModules)
+					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
+				// ... иначе - в обычный цвет
+//				else
+//					Info.AdvControl(&MainGuid, ACTL_GETCOLOR, COL_DIALOGBOX,&Color);
+				Colors->Colors[0]=Color;
+			}
+			break;
+
+	/************************************************************************/
+
+		case DN_INPUT:
+		{
+			const INPUT_RECORD* record=(const INPUT_RECORD *)Param2;
+
+			if (record->EventType==MOUSE_EVENT)
+			{
+				// отработаем щелчок мыши
+				if ((record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED || record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED)
+					 && record->Event.MouseEvent.dwEventFlags!=DOUBLE_CLICK)
+				{
+					SMALL_RECT dlgRect;
+					Info.SendDlgMessage(hDlg,DM_GETDLGRECT,0,&dlgRect);
+					// щелкнули в LISTе
+					if (record->Event.MouseEvent.dwMousePosition.X>dlgRect.Left && record->Event.MouseEvent.dwMousePosition.X<dlgRect.Left+4
+					&& record->Event.MouseEvent.dwMousePosition.Y>dlgRect.Top && record->Event.MouseEvent.dwMousePosition.Y<dlgRect.Bottom-7)
+					{
+						FarListPos ListPos={sizeof(FarListPos)};
+						Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,&ListPos);
+						intptr_t OldPos=ListPos.SelectPos;
+						ListPos.SelectPos=ListPos.TopPos+(record->Event.MouseEvent.dwMousePosition.Y-1-dlgRect.Top);
+						intptr_t NewPos=Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&ListPos);
+						// вот оно, поле для отметки
+						if (GetStatus()!=S_DOWNLOAD && NewPos==ListPos.SelectPos && record->Event.MouseEvent.dwMousePosition.X>=dlgRect.Left+1 && record->Event.MouseEvent.dwMousePosition.X<=dlgRect.Left+3)
+						{
+							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)ListPos.SelectPos);
+							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+							if (Cur)
+							{
+								struct FarListGetItem FLGI={sizeof(FarListGetItem)};
+								FLGI.ItemIndex=ListPos.SelectPos;
+								if (Info.SendDlgMessage(hDlg,DM_LISTGETITEM,DlgLIST,&FLGI))
+								{
+									if (!(FLGI.Item.Flags&LIF_GRAYED))
+									{
+										if (record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED)
+										{
+											if (LOWORD(FLGI.Item.Flags)==0x2b) FLGI.Item.Flags&= ~(LIF_CHECKED|0x2b);
+											else { FLGI.Item.Flags&= ~(LIF_CHECKED|0x2d); FLGI.Item.Flags|=(LIF_CHECKED|0x2b); }
+										}
+										else
+										{
+											if (LOWORD(FLGI.Item.Flags)==0x2d) FLGI.Item.Flags&= ~(LIF_CHECKED|0x2d);
+											else { FLGI.Item.Flags&= ~(LIF_CHECKED|0x2b); FLGI.Item.Flags|=(LIF_CHECKED|0x2d); }
+										}
+										struct FarListUpdate FLU={sizeof(FarListUpdate)};
+										FLU.Index=FLGI.ItemIndex;
+										FLU.Item=FLGI.Item;
+										if (Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
+										{
+											if (record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED)
+											{
+												if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdModules--; }
+												else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdModules++; }
+											}
+											else
+											{
+												if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
+												else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdModules?CountUpdModules--:0; }
+											}
+											wchar_t Buf[64]=L"";
+											if (CountUpdModules)
+												FSF.sprintf(Buf,L" %d ",CountUpdModules);
+											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
+											return false;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return true;
+		}
+
 		/************************************************************************/
 
 		case DN_CONTROLINPUT:
 		{
 			const INPUT_RECORD* record=(const INPUT_RECORD *)Param2;
-			if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
+			if (record->EventType==MOUSE_EVENT)
+			{
+				if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+					goto GOTO_CTRLH;
+				return false;
+			}
+			else if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
 			{
 				WORD vk=record->Event.KeyEvent.wVirtualKeyCode;
 				if (IsNone(record))
@@ -1486,16 +1599,20 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 											{
 												if (vk==VK_INSERT || vk==VK_ADD)
 												{
-													if (Cur->Flags&UPD) Cur->Flags&=~UPD;
-													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; }
+													if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdModules--; }
+													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdModules++; }
 												}
 												else
 												{
 													if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
-													else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; }
+													else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdModules?CountUpdModules--:0; }
 												}
 												FLP.SelectPos++;
 												Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
+												wchar_t Buf[64]=L"";
+												if (CountUpdModules)
+													FSF.sprintf(Buf,L" %d ",CountUpdModules);
+												Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 												return true;
 											}
 										}
@@ -1584,6 +1701,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					{
 						if (vk==0x48) // VK_H
 						{
+GOTO_CTRLH:
 							if (GetStatus()!=S_DOWNLOAD)
 							{
 								opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
@@ -1687,7 +1805,9 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 		case DN_UPDDLG:
 		{
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
-			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(MUpdate));
+			if (GetStatus()==S_COMPLET)
+				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(MUpdate));
+			Info.SendDlgMessage(hDlg,DM_ENABLE,DlgUPD,(void*)1);
 			MakeList(hDlg,true);
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
 			break;
@@ -1705,6 +1825,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					case S_UPTODATE:
 					{
 						SetStatus(S_DOWNLOAD);
+						Info.SendDlgMessage(hDlg,DM_ENABLE,DlgUPD,0);
 						return false;
 					}
 					case S_COMPLET:
@@ -1796,6 +1917,7 @@ VOID ReadSettings()
 	opt.TrayNotify=settings.Get(0,L"TrayNotify",0);
 	opt.Wait=settings.Get(0,L"Wait",10);
 	ipc.DelAfterInstall=settings.Get(0,L"Delete",1);
+	opt.Date=settings.Get(0,L"Date",0);
 	opt.Proxy=settings.Get(0,L"Proxy",0);
 	settings.Get(0,L"Srv",opt.ProxyName,ARRAYSIZE(opt.ProxyName),L"");
 	settings.Get(0,L"User",opt.ProxyUser,ARRAYSIZE(opt.ProxyUser),L"");
@@ -1820,31 +1942,32 @@ intptr_t Config()
 
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2				Selected	History	Mask	Flags	Data	MaxLen	UserParam
-		/* 0*/{DI_DOUBLEBOX,  3, 1,60,13, 0, 0, 0,                  0,MSG(MName),0,0},
+		/* 0*/{DI_DOUBLEBOX,  3, 1,60,14, 0, 0, 0,                  0,MSG(MName),0,0},
 		/* 1*/{DI_CHECKBOX,   5, 2, 0, 0, opt.Auto, 0, 0,   DIF_FOCUS, MSG(MCfgAuto),0,0},
 		/* 2*/{DI_CHECKBOX,   9, 3, 0, 0, opt.TrayNotify, 0, 0,     0, MSG(MCfgTrayNotify),0,0},
 		/* 3*/{DI_FIXEDIT,    5, 4, 7, 0, 0, 0, L"999",  DIF_MASKEDIT,FSF.itoa(opt.Wait,num,10),0,0},
 		/* 4*/{DI_TEXT,       9, 4,58, 0, 0, 0, 0,                  0,MSG(MCfgWait),0,0},
 		/* 5*/{DI_CHECKBOX,   5, 5, 0, 0, ipc.DelAfterInstall,0, 0,DIF_3STATE,MSG(MCfgDelete),0,0},
-		/* 6*/{DI_CHECKBOX,   5, 6, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
-		/* 7*/{DI_TEXT,       9, 7,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
-		/* 8*/{DI_EDIT,      24, 7,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
-		/* 9*/{DI_TEXT,       9, 8,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
-		/*10*/{DI_EDIT,      24, 8,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
-		/*11*/{DI_PSWEDIT,   43, 8,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
-		/*12*/{DI_TEXT,       5, 9,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
-		/*13*/{DI_EDIT,       5,10,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,opt.TempDirectory,0,0},
-		/*14*/{DI_TEXT,      -1,11, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
-		/*15*/{DI_BUTTON,     0,12, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
-		/*16*/{DI_BUTTON,     0,12, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
+		/* 6*/{DI_CHECKBOX,   5, 6, 0, 0, opt.Date,  0, 0,          0,MSG(MCfgDate),0,0},
+		/* 7*/{DI_CHECKBOX,   5, 7, 0, 0, opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
+		/* 8*/{DI_TEXT,       9, 8,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
+		/* 9*/{DI_EDIT,      24, 8,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,opt.ProxyName,0,0},
+		/*10*/{DI_TEXT,       9, 9,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
+		/*11*/{DI_EDIT,      24, 9,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,opt.ProxyUser,0,0},
+		/*12*/{DI_PSWEDIT,   43, 9,58, 0, 0,         0, 0,          0,opt.ProxyPass,0,0},
+		/*13*/{DI_TEXT,       5,10,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
+		/*14*/{DI_EDIT,       5,11,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,opt.TempDirectory,0,0},
+		/*15*/{DI_TEXT,      -1,12, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
+		/*16*/{DI_BUTTON,     0,13, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
+		/*17*/{DI_BUTTON,     0,13, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
 	};
 
-	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,15,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
+	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,16,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
 
 	intptr_t ret=0;
 	if (hDlg != INVALID_HANDLE_VALUE)
 	{
-		if (Info.DialogRun(hDlg)==15)
+		if (Info.DialogRun(hDlg)==16)
 		{
 			opt.Auto=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,1,0);
 			if (opt.Auto)
@@ -1854,15 +1977,16 @@ intptr_t Config()
 			opt.Wait=FSF.atoi((const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,3,0));
 			if (!opt.Wait) opt.Wait=10;
 			ipc.DelAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,5,0);
-			opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,6,0);
+			opt.Date=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,6,0);
+			opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,7,0);
 			if (opt.Proxy)
 			{
-				lstrcpy(opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,8,0));
-				lstrcpy(opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,10,0));
-				lstrcpy(opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,11,0));
+				lstrcpy(opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,9,0));
+				lstrcpy(opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,11,0));
+				lstrcpy(opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,12,0));
 			}
 			wchar_t Buf[MAX_PATH];
-			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,13,0));
+			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,14,0));
 			if (Buf[0]==0) lstrcpy(Buf,L"%TEMP%\\UpdateEx\\");
 			lstrcpy(opt.TempDirectory,Buf);
 			ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
@@ -1875,6 +1999,7 @@ intptr_t Config()
 			settings.Set(0,L"TrayNotify",opt.TrayNotify);
 			settings.Set(0,L"Wait",opt.Wait);
 			settings.Set(0,L"Delete",ipc.DelAfterInstall);
+			settings.Set(0,L"Date",opt.Date);
 			settings.Set(0,L"Proxy",opt.Proxy);
 			settings.Set(0,L"Srv",opt.ProxyName);
 			settings.Set(0,L"User",opt.ProxyUser);
