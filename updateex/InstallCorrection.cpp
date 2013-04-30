@@ -32,7 +32,7 @@ bool FindFile(const wchar_t *Dir, const wchar_t *Pattern, wchar_t *FileName)
 				}
 				else
 				{
-					if (!lstrcmpi(FindData.cFileName,Pattern))
+					if (!lstrcmpi(FindData.cFileName,Pattern) || !lstrcmpi(StrRChr(FindData.cFileName,nullptr,L'.'),Pattern))
 					{
 						lstrcpy(FileName,FindPath);
 						ret=true;
@@ -125,14 +125,26 @@ bool Move(const wchar_t* Src, const wchar_t* Dst)
 
 bool InstallCorrection(const wchar_t *ModuleName)
 {
-	if (GetFileAttributes(ModuleName)==INVALID_FILE_ATTRIBUTES)
+	wchar_t FullFileName[MAX_PATH], SrcDir[MAX_PATH];
+	DWORD Attr=GetFileAttributes(ModuleName);
+	if (Attr==INVALID_FILE_ATTRIBUTES)
 	{
 		wchar_t CurDir[MAX_PATH];
-		wchar_t FileName[MAX_PATH];
-		if (FindFile(GetModuleDir(ModuleName,CurDir),StrRChr(ModuleName,nullptr,L'\\')+1,FileName))
+		if (FindFile(GetModuleDir(ModuleName,CurDir),StrRChr(ModuleName,nullptr,L'\\')+1,FullFileName))
 		{
-			wchar_t SrcDir[MAX_PATH];
-			return Move(GetModuleDir(FileName,SrcDir),CurDir);
+			return Move(GetModuleDir(FullFileName,SrcDir),CurDir);
+		}
+		return false;
+	}
+	else if (Attr==FILE_ATTRIBUTE_DIRECTORY) // значит новый модуль!
+	{
+		if (FindFile(ModuleName,L".dll",FullFileName))
+		{
+			GetModuleDir(FullFileName,SrcDir);
+			if (lstrcmpi(SrcDir,ModuleName))
+				return Move(SrcDir,ModuleName);
+			else
+				return true;
 		}
 		return false;
 	}

@@ -14,7 +14,6 @@
 #include "HideCursor.hpp"
 #include "TextColor.hpp"
 
-
 //http://www.farmanager.com/nightly/update3.php?p=32
 LPCWSTR FarRemoteSrv=L"www.farmanager.com";
 LPCWSTR FarRemotePath=L"/nightly/";
@@ -42,6 +41,7 @@ enum MODULEINFOFLAG {
 	UPD      = 0x010,  // будем обновлять
 	INFO     = 0x020,  // загрузили в базу инфо об обновлении
 	ARC      = 0x040,  // загрузили архив для обновления
+	NEW      = 0x080,  // новый, еще не установлен
 };
 
 struct ModuleInfo
@@ -52,7 +52,7 @@ struct ModuleInfo
 	struct VersionInfo Version;
 	wchar_t pid[64];  // plug ID
 	wchar_t Title[64];
-	wchar_t Description[MAX_PATH*2];
+	wchar_t Description[2048];
 	wchar_t Author[MAX_PATH];
 	wchar_t ModuleName[MAX_PATH];
 	wchar_t Date[64];
@@ -86,21 +86,22 @@ void FreeModulesInfo()
 	ipc.CountModules=0;
 }
 
-wchar_t PluginModule[MAX_PATH];
-
 struct OPT
 {
 	DWORD Auto;
 	DWORD TrayNotify;
 	DWORD Wait;
 	DWORD ShowDisable;
-	DWORD Proxy;
 	DWORD SetActive;
 	DWORD Date;
+	DWORD GetNew;
+	DWORD Proxy;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
 	wchar_t ProxyPass[MAX_PATH];
 	wchar_t TempDirectory[MAX_PATH]; // для показа "как есть"
+	wchar_t DateFrom[11];
+	wchar_t DateTo[11];
 } opt;
 
 
@@ -138,6 +139,8 @@ struct EventStruct
 bool NeedRestart=false;
 DWORD Status=S_NONE;
 size_t CountUpdModules;
+
+wchar_t PluginModule[MAX_PATH];
 
 SYSTEMTIME SavedTime;
 
@@ -192,172 +195,6 @@ template<class T>T StringToNumber(LPCWSTR String, T &Number)
 	return Number;
 }
 
-typedef BOOL (CALLBACK* DOWNLOADPROCEX)(ModuleInfo*,DWORD);
-
-struct DownloadParam
-{
-	ModuleInfo *CurInfo;
-	DOWNLOADPROCEX Proc;
-};
-
-char *CreatePostInfo(char *Info);
-
-
-DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, bool bPost=false, struct DownloadParam *Param=nullptr)
-{
-	DWORD err=0;
-
-	DWORD ProxyType=INTERNET_OPEN_TYPE_DIRECT;
-	if(opt.Proxy)
-		ProxyType=*opt.ProxyName?INTERNET_OPEN_TYPE_PROXY:INTERNET_OPEN_TYPE_PRECONFIG;
-
-	HINTERNET hInternet=InternetOpen(L"Mozilla/5.0 (compatible; FAR UpdateEx)",ProxyType,opt.ProxyName,nullptr,0);
-	if(hInternet)
-	{
-		HINTERNET hConnect=InternetConnect(hInternet,strSrv,INTERNET_DEFAULT_HTTP_PORT,nullptr,nullptr,INTERNET_SERVICE_HTTP,0,0);
-		if(hConnect)
-		{
-			if(opt.Proxy && *opt.ProxyName)
-			{
-				if(*opt.ProxyUser)
-				{
-					if (!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_USERNAME,(LPVOID)opt.ProxyUser,lstrlen(opt.ProxyUser)))
-					{
-						err=GetLastError();
-					}
-				}
-				if (*opt.ProxyPass)
-				{
-					if(!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_PASSWORD,(LPVOID)opt.ProxyPass,lstrlen(opt.ProxyPass)))
-					{
-						err=GetLastError();
-					}
-				}
-			}
-			HTTP_VERSION_INFO httpver={1,1};
-			if (!InternetSetOption(hConnect, INTERNET_OPTION_HTTP_VERSION, &httpver, sizeof(httpver)))
-			{
-				err=GetLastError();
-			}
-			HINTERNET hRequest=nullptr;
-
-			if (bPost)
-			{
-				LPCWSTR AcceptTypes[] = {L"*/*",nullptr};
-				hRequest=HttpOpenRequest(hConnect,L"POST",strURL,nullptr,nullptr,AcceptTypes,INTERNET_FLAG_KEEP_CONNECTION,1);
-				if (hRequest)
-				{
-					// Формируем заголовок
-					const wchar_t *hdrs=L"Content-Type: application/x-www-form-urlencoded";
-					// Посылаем запрос
-					char *post=nullptr;
-					post=CreatePostInfo(post);
-//MessageBoxA(0,post,0,MB_OK);
-					if (!HttpSendRequest(hRequest,hdrs,lstrlenW(hdrs),(void*)post, lstrlenA(post)))
-						err=GetLastError();
-					free(post);
-					Sleep(10);
-				}
-				else
-				{
-					err=GetLastError();
-				}
-			}
-			else
-			{
-				hRequest=HttpOpenRequest(hConnect,L"GET",strURL,L"HTTP/1.1",nullptr,0,INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_NO_CACHE_WRITE|INTERNET_FLAG_PRAGMA_NOCACHE|INTERNET_FLAG_RELOAD,1);
-				if (hRequest)
-				{
-					if (!HttpSendRequest(hRequest,nullptr,0,nullptr,0))
-						err=GetLastError();
-				}
-				else
-				{
-					err=GetLastError();
-				}
-			}
-			if (hRequest)
-			{
-				DWORD StatCode=0;
-				DWORD sz=sizeof(StatCode);
-				if (HttpQueryInfo(hRequest,HTTP_QUERY_STATUS_CODE|HTTP_QUERY_FLAG_NUMBER,&StatCode,&sz,nullptr)
-						&& StatCode!=HTTP_STATUS_NOT_FOUND && (StatCode==HTTP_STATUS_OK || StatCode==HTTP_STATUS_REDIRECT))
-				{
-					HANDLE hFile=CreateFile(strFile,GENERIC_WRITE,FILE_SHARE_READ,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
-					if(hFile!=INVALID_HANDLE_VALUE)
-					{
-						DWORD Size=-1;
-						sz=sizeof(Size);
-						HttpQueryInfo(hRequest,HTTP_QUERY_CONTENT_LENGTH|HTTP_QUERY_FLAG_NUMBER,&Size,&sz,nullptr);
-						DWORD ReadOk=true;
-						if(Size!=GetFileSize(hFile,nullptr))
-						{
-							SetEndOfFile(hFile);
-							UINT BytesDone=0;
-							DWORD dwBytesRead;
-							BYTE Data[2048];
-							while((ReadOk=InternetReadFile(hRequest,Data,sizeof(Data),&dwBytesRead))!=0 && dwBytesRead)
-							{
-								BytesDone+=dwBytesRead;
-								if (Param)
-								{
-									if (GetStatus()!=S_DOWNLOAD)
-										break;
-									if (Size && Size!=-1)
-										Param->Proc(Param->CurInfo,BytesDone*100/Size);
-								}
-								DWORD dwWritten=0;
-								if (!WriteFile(hFile,Data,dwBytesRead,&dwWritten,nullptr))
-								{
-									err=GetLastError();
-									break;
-								}
-							}
-						}
-						CloseHandle(hFile);
-						if (!ReadOk)
-						{
-							err=ERROR_READ_FAULT;
-							DeleteFile(strFile);
-						}
-					}
-					else
-					{
-						err=GetLastError();
-					}
-				}
-				else
-				{
-					err=ERROR_FILE_NOT_FOUND;
-				}
-				InternetCloseHandle(hRequest);
-			}
-			InternetCloseHandle(hConnect);
-		}
-		else
-			err=GetLastError();
-		InternetCloseHandle(hInternet);
-	}
-	else
-		err=GetLastError();
-
-	if (Param)
-	{
-		if (err) { Param->CurInfo->Flags|=ERR; Param->CurInfo->Flags&= ~UPD; }
-		else { Param->CurInfo->Flags|=ARC; Param->CurInfo->Flags&= ~ERR; }
-		Param->Proc(Param->CurInfo,0);
-	}
-	return err;
-}
-
-bool DownloadFile(LPCWSTR Srv,LPCWSTR RemoteFile,LPCWSTR LocalName=nullptr,bool bPost=false)
-{
-	wchar_t LocalFile[MAX_PATH];
-	lstrcpy(LocalFile,ipc.TempDirectory);
-	lstrcat(LocalFile,LocalName?LocalName:FSF.PointToName(RemoteFile));
-	return WinInetDownloadEx(Srv,RemoteFile,LocalFile,bPost)==0;
-}
-
 bool Clean()
 {
 	DeleteFile(PluginModule);
@@ -387,6 +224,159 @@ VOID CleanTime()
 	EnterCriticalSection(&cs);
 	memset(&SavedTime,0,sizeof(SavedTime));
 	LeaveCriticalSection(&cs);
+}
+
+wchar_t *GetStrFileTime(FILETIME *LastWriteTime, wchar_t *Time)
+{
+	SYSTEMTIME ModificTime;
+	FILETIME LocalTime;
+	FileTimeToLocalFileTime(LastWriteTime,&LocalTime);
+	FileTimeToSystemTime(&LocalTime,&ModificTime);
+	// для Time достаточно [11] !!!
+	if (Time)
+	{
+		if (opt.Date)
+			FSF.sprintf(Time,L"%04d-%02d-%02d",ModificTime.wYear,ModificTime.wMonth,ModificTime.wDay);
+		else
+			FSF.sprintf(Time,L"%02d-%02d-%04d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear);
+	}
+	return Time;
+}
+
+void CopyReverseTime(wchar_t *out,const wchar_t *in)
+{
+	if (lstrlen(in)>=10)
+	{
+		memcpy(&out[0],&in[8],2*sizeof(wchar_t));
+		memcpy(&out[2],&in[4],4*sizeof(wchar_t));
+		memcpy(&out[6],&in[0],4*sizeof(wchar_t));
+		out[10]=0;
+	}
+	else
+		out[0]=0;
+}
+
+void CopyReverseTime2(wchar_t *out,const wchar_t *in)
+{
+	if (lstrlen(in)>=10)
+	{
+		memcpy(&out[0],&in[6],4*sizeof(wchar_t));
+		memcpy(&out[4],&in[2],4*sizeof(wchar_t));
+		memcpy(&out[8],&in[0],2*sizeof(wchar_t));
+		out[10]=0;
+	}
+	else
+		out[0]=0;
+}
+
+wchar_t *GetModuleDir(const wchar_t *Path, wchar_t *Dir)
+{
+	lstrcpy(Dir,Path);
+	*(StrRChr(Dir,nullptr,L'\\')+1)=0;
+	return Dir;
+}
+
+wchar_t *GetNewModuleDir(const wchar_t *ArcName, wchar_t *Dir)
+{
+	GetModuleDir(ipc.Modules[0].ModuleName,Dir);
+	lstrcat(Dir,L"Plugins\\");
+	if (ArcName)
+	{
+		wchar_t tmp[MAX_PATH];
+		lstrcpy(tmp,ArcName);
+		wchar_t *p=StrPBrk(tmp,L"._-");
+		if (p) *p=0;
+		lstrcat(Dir,tmp);
+		lstrcat(Dir,L"\\");
+	}
+	else
+		lstrcat(Dir,L"??\\");
+	return Dir;
+}
+
+struct STDPLUG
+{
+	size_t i;
+	const GUID *Guid;
+	wchar_t *Log;
+} StdPlug[]= {
+	{0, &FarGuid,        L"http://www.farmanager.com/svn/trunk/unicode_far/changelog"},
+	{1, &AlignGuid,      L"align"},
+	{2, &ArcliteGuid,    L"arclite"},
+	{3, &AutowrapGuid,   L"autowrap"},
+	{4, &BracketsGuid,   L"brackets"},
+	{5, &CompareGuid,    L"compare"},
+	{6, &DrawlineGuid,   L"drawline"},
+	{7, &EditcaseGuid,   L"editcase"},
+	{8, &EmenuGuid,      L"emenu"},
+	{9, &FarcmdsGuid,    L"farcmds"},
+	{10,&FilecaseGuid,   L"filecase"},
+	{11,&HlfviewerGuid,  L"hlfviewer"},
+	{12,&LuamacroGuid,   L"luamacro"},
+	{13,&NetworkGuid,    L"network"},
+	{14,&ProclistGuid,   L"proclist"},
+	{15,&TmppanelGuid,   L"tmppanel"},
+	{16,&FarcolorerGuid, L"http://colorer.svn.sourceforge.net/viewvc/colorer/trunk/far3colorer/changelog"},
+	{17,&NetboxGuid,     L"http://raw.github.com/michaellukashov/Far-NetBox/master/ChangeLog"}
+};
+
+bool IsStdPlug(GUID PlugGuid)
+{
+	for (size_t i=0; i<=17; i++)
+		if (*StdPlug[i].Guid==PlugGuid)
+			return true;
+	return false;
+}
+
+bool StrToGuid(const wchar_t *Value,GUID &Guid)
+{
+	return (UuidFromString((unsigned short*)Value,&Guid)==RPC_S_OK)?true:false;
+}
+
+wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
+{
+	if (Value)
+		wsprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
+	return Value;
+}
+
+bool CmpListGuid(wchar_t *ListGuid,GUID &Guid)
+{
+	bool ret=false;
+	if (ListGuid&&ListGuid[0])
+	{
+		wchar_t guid[37];
+		GuidToStr(Guid,guid);
+		for (wchar_t *p=ListGuid; *p; p+=(36+1))
+		{
+			if (!FSF.LStrnicmp(p,guid,36))
+			{
+				ret=true;
+				break;
+			}
+		}
+	}
+	return ret;
+}
+
+wchar_t *CharToWChar(const char *str)
+{
+	wchar_t *buf=nullptr;
+	if (str)
+	{
+		int size=MultiByteToWideChar(CP_UTF8,0,str,-1,0,0);
+		buf=(wchar_t*)malloc(size*sizeof(wchar_t));
+		if (buf) MultiByteToWideChar(CP_UTF8,0,str,-1,buf,size);
+	}
+	return buf;
+}
+
+bool NeedUpdate(VersionInfo &Cur,VersionInfo &New, bool EqualBuild=false)
+{
+	return (New.Major>Cur.Major) ||
+	((New.Major==Cur.Major)&&(New.Minor>Cur.Minor)) ||
+	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision>Cur.Revision)) ||
+	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision==Cur.Revision)&&(EqualBuild?New.Build>=Cur.Build:New.Build>Cur.Build));
 }
 
 bool ParentIsFar()
@@ -528,38 +518,6 @@ VOID StartUpdate(bool Thread)
 	}
 }
 
-DWORD GetUpdatesLists()
-{
-	DWORD Ret=S_NONE;
-	CreateDirectory(ipc.TempDirectory,nullptr);
-	if (GetFileAttributes(ipc.TempDirectory)==INVALID_FILE_ATTRIBUTES)
-		return S_CANTCREATTMP;
-
-	wchar_t URL[1024];
-	// far
-	{
-		lstrcpy(URL,FarRemotePath);
-		lstrcat(URL,FarUpdateFile);
-		lstrcat(URL,phpRequest);
-		if (!DownloadFile(FarRemoteSrv,URL,FarUpdateFile,false))
-			Ret=S_CANTGETFARLIST;
-	}
-	// plug
-	if (Ret==S_NONE)
-	{
-		lstrcpy(URL,PlugRemotePath1);
-		lstrcat(URL,PlugUpdateFile);
-		if (!DownloadFile(PlugRemoteSrv,URL,PlugUpdateFile,true))
-			Ret=S_CANTGETPLUGLIST;
-	}
-	if (Ret)
-	{
-		DeleteFile(ipc.FarUpdateList);
-		DeleteFile(ipc.PlugUpdateList);
-	}
-	return Ret;
-}
-
 bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 {
 	vi.Major=vi.Minor=vi.Revision=vi.Build=0;
@@ -593,77 +551,6 @@ bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 		}
 	}
 	return ret;
-}
-
-struct STDPLUG
-{
-	size_t i;
-	const GUID *Guid;
-	wchar_t *Log;
-} StdPlug[]= {
-	{0, &FarGuid,        L"http://www.farmanager.com/svn/trunk/unicode_far/changelog"},
-	{1, &AlignGuid,      L"align"},
-	{2, &ArcliteGuid,    L"arclite"},
-	{3, &AutowrapGuid,   L"autowrap"},
-	{4, &BracketsGuid,   L"brackets"},
-	{5, &CompareGuid,    L"compare"},
-	{6, &DrawlineGuid,   L"drawline"},
-	{7, &EditcaseGuid,   L"editcase"},
-	{8, &EmenuGuid,      L"emenu"},
-	{9, &FarcmdsGuid,    L"farcmds"},
-	{10,&FilecaseGuid,   L"filecase"},
-	{11,&HlfviewerGuid,  L"hlfviewer"},
-	{12,&LuamacroGuid,   L"luamacro"},
-	{13,&NetworkGuid,    L"network"},
-	{14,&ProclistGuid,   L"proclist"},
-	{15,&TmppanelGuid,   L"tmppanel"},
-	{16,&FarcolorerGuid, L"http://colorer.svn.sourceforge.net/viewvc/colorer/trunk/far3colorer/changelog"},
-	{17,&NetboxGuid,     L"http://raw.github.com/michaellukashov/Far-NetBox/master/ChangeLog"}
-};
-
-bool IsStdPlug(GUID PlugGuid)
-{
-	for (size_t i=0; i<=17; i++)
-		if (*StdPlug[i].Guid==PlugGuid)
-			return true;
-	return false;
-}
-
-wchar_t *GetStrFileTime(FILETIME *LastWriteTime, wchar_t *Time)
-{
-	SYSTEMTIME ModificTime;
-	FILETIME LocalTime;
-	FileTimeToLocalFileTime(LastWriteTime,&LocalTime);
-	FileTimeToSystemTime(&LocalTime,&ModificTime);
-	// для Time достаточно [11] !!!
-	if (Time)
-	{
-		if (opt.Date)
-			FSF.sprintf(Time,L"%04d-%02d-%02d",ModificTime.wYear,ModificTime.wMonth,ModificTime.wDay);
-		else
-			FSF.sprintf(Time,L"%02d-%02d-%04d",ModificTime.wDay,ModificTime.wMonth,ModificTime.wYear);
-	}
-	return Time;
-}
-
-void CopyReverseTime(wchar_t *out,const wchar_t *in)
-{
-	if (lstrlen(in)>=10)
-	{
-		memcpy(&out[0],&in[8],2*sizeof(wchar_t));
-		memcpy(&out[2],&in[4],4*sizeof(wchar_t));
-		memcpy(&out[6],&in[0],4*sizeof(wchar_t));
-		out[10]=0;
-	}
-	else
-		out[0]=0;
-}
-
-wchar_t *GetModuleDir(const wchar_t *Path, wchar_t *Dir)
-{
-	lstrcpy(Dir,Path);
-	*(StrRChr(Dir,nullptr,L'\\')+1)=0;
-	return Dir;
 }
 
 DWORD GetInstallModulesInfo()
@@ -707,10 +594,10 @@ DWORD GetInstallModulesInfo()
 						GetCurrentModuleVersion(FGPInfo->ModuleName,ipc.Modules[i].Version);
 					else
 						ipc.Modules[i].Version=FGPInfo->GInfo->Version;
-					lstrcpy(ipc.Modules[i].Title,FGPInfo->GInfo->Title);
-					lstrcpy(ipc.Modules[i].Description,FGPInfo->GInfo->Description);
-					lstrcpy(ipc.Modules[i].Author,FGPInfo->GInfo->Author);
-					lstrcpy(ipc.Modules[i].ModuleName,FGPInfo->ModuleName);
+					lstrcpyn(ipc.Modules[i].Title,FGPInfo->GInfo->Title,63);
+					lstrcpyn(ipc.Modules[i].Description,FGPInfo->GInfo->Description,2047);
+					lstrcpyn(ipc.Modules[i].Author,FGPInfo->GInfo->Author,MAX_PATH-1);
+					lstrcpyn(ipc.Modules[i].ModuleName,FGPInfo->ModuleName,MAX_PATH-1);
 					free(FGPInfo);
 				}
 				else
@@ -735,96 +622,38 @@ DWORD GetInstallModulesInfo()
 	return Ret;
 }
 
-bool StrToGuid(const wchar_t *Value,GUID &Guid)
-{
-	return (UuidFromString((unsigned short*)Value,&Guid)==RPC_S_OK)?true:false;
-}
+#include "Download.cpp"
 
-wchar_t *GuidToStr(const GUID& Guid, wchar_t *Value)
+DWORD GetUpdatesLists()
 {
-	if (Value)
-		wsprintf(Value,L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",Guid.Data1,Guid.Data2,Guid.Data3,Guid.Data4[0],Guid.Data4[1],Guid.Data4[2],Guid.Data4[3],Guid.Data4[4],Guid.Data4[5],Guid.Data4[6],Guid.Data4[7]);
-	return Value;
-}
+	DWORD Ret=S_NONE;
+	CreateDirectory(ipc.TempDirectory,nullptr);
+	if (GetFileAttributes(ipc.TempDirectory)==INVALID_FILE_ATTRIBUTES)
+		return S_CANTCREATTMP;
 
-bool CmpListGuid(wchar_t *ListGuid,GUID &Guid)
-{
-	bool ret=false;
-	if (ListGuid&&ListGuid[0])
+	wchar_t URL[1024];
+	// far
 	{
-		wchar_t guid[37];
-		GuidToStr(Guid,guid);
-		for (wchar_t *p=ListGuid; *p; p+=(36+1))
-		{
-			if (!FSF.LStrnicmp(p,guid,36))
-			{
-				ret=true;
-				break;
-			}
-		}
+		lstrcpy(URL,FarRemotePath);
+		lstrcat(URL,FarUpdateFile);
+		lstrcat(URL,phpRequest);
+		if (!DownloadFile(FarRemoteSrv,URL,FarUpdateFile,false))
+			Ret=S_CANTGETFARLIST;
 	}
-	return ret;
-}
-
-char *CreatePostInfo(char *cInfo)
-{
-/*
-command=
-<plugring>
-<command code="getinfo"/>
-<uids>
-<uid>B076F0B0-90AE-408c-AD09-491606F09435</uid>
-<uid>65642111-AA69-4B84-B4B8-9249579EC4FA</uid>
-</uids>
-</plugring>
-*/
-	wchar_t HeaderHome[]=L"command=<plugring><command code=\"getinfo\"/><uids>";
-	wchar_t HeaderEnd[]=L"</uids></plugring>";
-	wchar_t Body[5+36+6+1];
-	wchar_t *Str=(wchar_t*)malloc((lstrlen(HeaderHome)+lstrlen(HeaderEnd)+ipc.CountModules*ARRAYSIZE(Body)+1)*sizeof(wchar_t));
-	if (Str)
+	// plug
+	if (Ret==S_NONE)
 	{
-		lstrcpy(Str,HeaderHome);
-		for (size_t i=0; i<ipc.CountModules; i++)
-		{
-			if (!(ipc.Modules[i].Flags&ANSI) && ipc.Modules[i].Guid!=NULLGuid && !IsStdPlug(ipc.Modules[i].Guid))
-			{
-				wchar_t p[37];
-				FSF.sprintf(Body,L"<uid>%s</uid>",GuidToStr(ipc.Modules[i].Guid,p));
-				lstrcat(Str,Body);
-			}
-		}
-		lstrcat(Str,HeaderEnd);
-		size_t Size=WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),nullptr,0,nullptr,nullptr)+1;
-		cInfo=(char*)malloc(Size);
-		if (cInfo)
-		{
-			WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),cInfo,static_cast<int>(Size-1),nullptr,nullptr);
-			cInfo[Size-1]=0;
-		}
-		free(Str);
+		lstrcpy(URL,PlugRemotePath1);
+		lstrcat(URL,PlugUpdateFile);
+		if (!DownloadFile(PlugRemoteSrv,URL,PlugUpdateFile,true))
+			Ret=S_CANTGETPLUGLIST;
 	}
-	return cInfo;
-}
-
-bool NeedUpdate(VersionInfo &Cur,VersionInfo &New, bool EqualBuild=false)
-{
-	return (New.Major>Cur.Major) ||
-	((New.Major==Cur.Major)&&(New.Minor>Cur.Minor)) ||
-	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision>Cur.Revision)) ||
-	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision==Cur.Revision)&&(EqualBuild?New.Build>=Cur.Build:New.Build>Cur.Build));
-}
-
-wchar_t *CharToWChar(const char *str)
-{
-	wchar_t *buf=nullptr;
-	if (str)
+	if (Ret)
 	{
-		int size=MultiByteToWideChar(CP_UTF8,0,str,-1,0,0);
-		buf=(wchar_t*)malloc(size*sizeof(wchar_t));
-		if (buf) MultiByteToWideChar(CP_UTF8,0,str,-1,buf,size);
+		DeleteFile(ipc.FarUpdateList);
+		DeleteFile(ipc.PlugUpdateList);
 	}
-	return buf;
+	return Ret;
 }
 
 void GetUpdModulesInfo()
@@ -948,12 +777,42 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 										break;
 									}
 								}
+								if (opt.GetNew && !CurInfo) // значит новый
+								{
+									ModuleInfo *NewInfo=(ModuleInfo *)realloc(ipc.Modules,(ipc.CountModules+1)*sizeof(ModuleInfo));
+									if (NewInfo)
+									{
+										ipc.Modules=NewInfo;
+										memset(&ipc.Modules[ipc.CountModules],0,sizeof(ModuleInfo));
+										CurInfo=&ipc.Modules[ipc.CountModules];
+										ipc.CountModules++;
+										CurInfo->Guid=plugGUID;
+										CurInfo->Flags|=NEW;
+									}
+								}
 							}
 							free(Buf); Buf=nullptr;
 						}
 						if (CurInfo)
 						{
-							wchar_t *Buf=CharToWChar(plug->Attribute("id"));
+							wchar_t *Buf=nullptr;
+							if (opt.GetNew)
+							{
+								Buf=CharToWChar(plug->Attribute("title"));
+								if (Buf)
+								{
+									lstrcpyn(CurInfo->Title,Buf,63);
+									free(Buf); Buf=nullptr;
+								}
+								Buf=CharToWChar(plug->Attribute("description"));
+								if (Buf)
+								{
+									lstrcpyn(CurInfo->Description,Buf,2047);
+									free(Buf); Buf=nullptr;
+								}
+							}
+
+							Buf=CharToWChar(plug->Attribute("id"));
 							if (Buf)
 							{
 								lstrcpy(CurInfo->pid,Buf);
@@ -1062,13 +921,15 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 														lstrcpy(CurInfo->ArcName,Buf);
 														free(Buf); Buf=nullptr;
 													}
-													// если получили имя архива и версия новее...
+													// если получили имя архива..
 													if (CurInfo->ArcName[0])
 													{
 														CurInfo->Flags|=INFO;
+														if (CurInfo->Flags&NEW)
+															GetNewModuleDir(CurInfo->ArcName,CurInfo->ModuleName);
 														if (CmpListGuid(ListGuid,CurInfo->Guid))
 															CurInfo->Flags|=SKIP;
-														else if (NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
+														else if (!(CurInfo->Flags&NEW) && NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
 														{
 															CurInfo->Flags|=UPD;
 															Ret=S_UPDATE;
@@ -1122,7 +983,8 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	else if (Cur->Flags&SKIP)
 		Item.Flags|=(LIF_CHECKED|0x2d);
 
-	FSF.sprintf(Ver,L"%d.%d.%d.%d",Cur->Version.Major,Cur->Version.Minor,Cur->Version.Revision,Cur->Version.Build);
+	if (Cur->Flags&NEW) Ver[0]=0;
+	else FSF.sprintf(Ver,L"%d.%d.%d.%d",Cur->Version.Major,Cur->Version.Minor,Cur->Version.Revision,Cur->Version.Build);
 	if (Cur->Flags&INFO) FSF.sprintf(NewVer,L"%d.%d.%d.%d",Cur->NewVersion.Major,Cur->NewVersion.Minor,Cur->NewVersion.Revision,Cur->NewVersion.Build);
 	else NewVer[0]=0;
 
@@ -1161,10 +1023,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		{
 			if (Cur->Flags&STD)
 			{
-				int pos=0;
-				ModuleInfo **Tmp0=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void*)pos);
-				ModuleInfo *Cur0=Tmp0?*Tmp0:nullptr;
-				if (Cur0 && (Cur0->Flags&INFO)) FSF.sprintf(Buf,L"<%s \"%s\">",MSG(MStandard),Cur0->ArcName);
+				if (ipc.Modules[0].Flags&INFO) FSF.sprintf(Buf,L"%s \"%s\"",MSG(MStandard),ipc.Modules[0].ArcName);
 				else Buf[0]=0;
 			}
 			else
@@ -1200,6 +1059,8 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 	for (size_t i=0,ii=0; i<ipc.CountModules; i++)
 	{
 		ModuleInfo *Cur=&ipc.Modules[i];
+		if (opt.GetNew && !(Cur->Flags&NEW))
+			continue;
 		if ((GetStatus()!=S_COMPLET&&(Cur->Flags&INFO))||(GetStatus()==S_COMPLET&&(Cur->Flags&ARC))||opt.ShowDisable)
 		{
 			wchar_t Buf[MAX_PATH];
@@ -1238,7 +1099,6 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 	return true;
 }
 
-
 BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 {
 	if (Percent<100)
@@ -1268,8 +1128,6 @@ BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 	}
 	return TRUE;
 }
-
-#define DN_UPDDLG DM_USER+1
 
 bool DownloadUpdates()
 {
@@ -1321,101 +1179,8 @@ bool DownloadUpdates()
 	return true;
 }
 
-bool ShowSendModulesDialog(ModuleInfo *pInfo)
-{
-	wchar_t Guid[37]=L"";
-	bool bUnknown=true;
-	if (pInfo->Guid!=FarGuid && !(pInfo->Flags&ANSI) && !(pInfo->Flags&STD))
-	{
-		GuidToStr(pInfo->Guid,Guid);
-		bUnknown=false;
-	}
-	wchar_t FullFile[MAX_PATH]=L"";
-
-	struct PanelInfo PInfo={sizeof(PanelInfo)};
-	if (Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&PInfo))
-	{
-		if (PInfo.PanelType==PTYPE_FILEPANEL && !(PInfo.Flags&PFLAGS_PLUGIN))
-		{
-			size_t size=Info.PanelControl(PANEL_ACTIVE,FCTL_GETCURRENTPANELITEM,0,0);
-			if (size)
-			{
-				PluginPanelItem *PPI=(PluginPanelItem*)malloc(size);
-				if (PPI)
-				{
-					FarGetPluginPanelItem FGPPI={sizeof(FarGetPluginPanelItem),size,PPI};
-					Info.PanelControl(PANEL_ACTIVE,FCTL_GETCURRENTPANELITEM,0,&FGPPI);
-					if (!(FGPPI.Item->FileAttributes&FILE_ATTRIBUTE_DIRECTORY))
-					{
-						if (FSF.ProcessName(L"*.7z,*.zip,*.rar",(wchar_t*)FGPPI.Item->FileName,0,PN_CMPNAMELIST))
-						{
-							size=Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELDIRECTORY,0,0);
-							if (size)
-							{
-								FarPanelDirectory *buf=(FarPanelDirectory*)malloc(size);
-								if (buf)
-								{
-									buf->StructSize=sizeof(FarPanelDirectory);
-									Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELDIRECTORY,size,buf);
-									lstrcpy(FullFile,buf->Name);
-									if (FullFile[lstrlen(FullFile)-1]!=L'\\')
-										lstrcat(FullFile,L"\\");
-									lstrcat(FullFile,FGPPI.Item->FileName);
-									free(buf);
-								}
-							}
-						}
-					}
-					free(PPI);
-				}
-			}
-		}
-	}
-
-	struct FarDialogItem DialogItems[] = {
-		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
-		/* 0*/{DI_DOUBLEBOX,  0, 0,80,14, 0, 0, 0,     0,bUnknown?MSG(MSendUnknown):pInfo->Title,0,0},
-		/* 1*/{DI_TEXT,       2, 1,20, 0, 0, 0, 0,                             0,MSG(MSendLogin),0,0},
-		/* 2*/{DI_EDIT,      25, 1,50, 0, 0,L"UpdLogin",0, DIF_USELASTHISTORY|DIF_HISTORY|DIF_FOCUS,L"",0,0},
-		/* 3*/{DI_PSWEDIT,   53, 1,77, 0, 0, 0, 0,                                         0,L"",0,0},
-		/* 4*/{DI_TEXT,      -1, 2, 0, 0, 0, 0, 0,                             DIF_SEPARATOR,L"",0,0},
-		/* 5*/{DI_TEXT,       2, 3,20, 0, 0, 0, 0,                               0,MSG(MSendUID),0,0},
-		/* 6*/{DI_EDIT,      25, 3,77, 0, 0,L"UpdUID",0,                        DIF_HISTORY,Guid,0,0},
-		/* 7*/{DI_TEXT,      -1, 4, 0, 0, 0, 0, 0,                             DIF_SEPARATOR,L"",0,0},
-		/* 8*/{DI_TEXT,       2, 5,10, 0, 0, 0, 0,                               0,MSG(MSendVer),0,0},
-		/* 9*/{DI_FIXEDIT,   11, 5,14, 0, 0, 0, L"9999",                       DIF_MASKEDIT,L"0",0,0},
-		/*10*/{DI_FIXEDIT,   16, 5,19, 0, 0, 0, L"9999",                       DIF_MASKEDIT,L"0",0,0},
-		/*11*/{DI_FIXEDIT,   21, 5,24, 0, 0, 0, L"9999",                       DIF_MASKEDIT,L"0",0,0},
-		/*12*/{DI_FIXEDIT,   26, 5,29, 0, 0, 0, L"9999",                       DIF_MASKEDIT,L"1",0,0},
-		/*13*/{DI_TEXT,      42, 5,46, 0, 0, 0, 0,                            0,MSG(MSendFarVer),0,0},
-		/*14*/{DI_FIXEDIT,   48, 5,48, 0, 0, 0, L"9",                          DIF_MASKEDIT,L"3",0,0},
-		/*15*/{DI_FIXEDIT,   50, 5,51, 0, 0, 0, L"99",                         DIF_MASKEDIT,L"0",0,0},
-		/*16*/{DI_FIXEDIT,   53, 5,56, 0, 0, 0, L"9999",                    DIF_MASKEDIT,L"2927",0,0},
-		/*17*/{DI_TEXT,      -1, 6, 0, 0, 0, 0, 0,                             DIF_SEPARATOR,L"",0,0},
-		/*18*/{DI_TEXT,       2, 7,10, 0, 0, 0, 0,                              0,MSG(MSendFlag),0,0},
-		/*19*/{DI_EDIT,      11, 7,39, 0, 0,L"UpdFlag",0,     DIF_USELASTHISTORY|DIF_HISTORY,L"",0,0},
-		/*20*/{DI_TEXT,      42, 7,46, 0, 0, 0, 0,                               0,MSG(MSendWin),0,0},
-		/*21*/{DI_EDIT,      48, 7,77, 0, 0,L"UpdWin",0,      DIF_USELASTHISTORY|DIF_HISTORY,L"",0,0},
-		/*22*/{DI_TEXT,      -1, 8, 0, 0, 0, 0, 0,                             DIF_SEPARATOR,L"",0,0},
-		/*23*/{DI_TEXT,       2, 9, 0, 0, 0, 0, 0,                              0,MSG(MSendFile),0,0},
-		/*24*/{DI_EDIT,       2,10,77, 0, 0,L"UpdFile",0,                   DIF_HISTORY,FullFile,0,0},
-
-		/*25*/{DI_TEXT,      -1,11, 0, 0, 0, 0, 0,                           DIF_SEPARATOR2, L"",0,0},
-		/*26*/{DI_BUTTON,     0,12, 0, 0, 0, 0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MSend),0,0},
-		/*27*/{DI_BUTTON,     0,12, 0, 0, 0, 0, 0,                 DIF_CENTERGROUP, MSG(MCancel),0,0}
-	};
-
-	HANDLE hDlg=Info.DialogInit(&MainGuid, &SendModulesDlgGuid,-1,-1,80,14,L"Contents",DialogItems,ARRAYSIZE(DialogItems),0,FDLG_SMALLDIALOG,0,0);
-
-	bool ret=false;
-	if (hDlg != INVALID_HANDLE_VALUE)
-	{
-		if (Info.DialogRun(hDlg)==26)
-			ret=true;
-		Info.DialogFree(hDlg);
-	}
-	return ret;
-}
+#include "SendModules.cpp"
+#include "GetNewModules.cpp"
 
 intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,void *Param2)
 {
@@ -1557,6 +1322,9 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_CTRLH;
+				else if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+					goto GOTO_F7;
 				return false;
 			}
 			else if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
@@ -1647,6 +1415,85 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 								}
 							}
 							MessageBeep(MB_OK);
+							return true;
+						}
+						else if (vk==VK_F7)
+						{
+GOTO_F7:
+							if (GetNewModulesDialog())
+							{
+								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+								if (WaitForSingleObject(UnlockEvent,0)==WAIT_TIMEOUT)
+								{
+									MessageBeep(MB_ICONASTERISK);
+									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+									return true;
+								}
+								opt.GetNew=1;
+								int Auto=opt.Auto;
+								opt.Auto=0;
+								CleanTime();
+								WaitEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+								HANDLE hScreen=nullptr;
+								for (;;)
+								{
+									hScreen=Info.SaveScreen(0,0,-1,-1);
+									LPCWSTR Items[]={MSG(MName),MSG(MWait)};
+									Info.Message(&MainGuid,&MsgWaitGuid, 0, nullptr, Items, ARRAYSIZE(Items), 0);
+									// качаем листы с данными для обновления
+									// т.к. сервак часто в ауте, будем ждать коннекта не более n сек
+									if (WaitForSingleObject(WaitEvent,opt.Wait*1000)!=WAIT_OBJECT_0)
+									{
+										const wchar_t *err;
+										switch(GetStatus())
+										{
+											case S_CANTGETINSTALLINFO:
+												err=MSG(MCantGetInstallInfo);
+												break;
+											case S_CANTCREATTMP:
+												err=MSG(MCantCreatTmp);
+												break;
+											case S_CANTGETFARLIST:
+												err=MSG(MCantGetFarList);
+												break;
+											case S_CANTGETPLUGLIST:
+												err=MSG(MCantGetPlugList);
+												break;
+											case S_CANTGETFARUPDINFO:
+												err=MSG(MCantGetFarUpdInfo);
+												break;
+											case S_CANTGETPLUGUPDINFO:
+												err=MSG(MCantGetPlugUpdInfo);
+												break;
+											default:
+												err=MSG(MCantConnect);
+												break;
+										}
+										Info.RestoreScreen(hScreen);
+										LPCWSTR Items[]={MSG(MName),err};
+										if (Info.Message(&MainGuid,&MsgErrGuid, FMSG_MB_RETRYCANCEL|FMSG_LEFTALIGN|FMSG_WARNING, nullptr, Items, ARRAYSIZE(Items), 0))
+										{
+											CloseHandle(WaitEvent);
+											opt.GetNew=0;
+											opt.Auto=Auto; // восстановим
+											if (!opt.Auto) SaveTime();
+											Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+											return true;
+										}
+									}
+									else
+									{
+										Info.RestoreScreen(hScreen);
+										CloseHandle(WaitEvent);
+										break;
+									}
+								}
+								SaveTime();
+								opt.Auto=Auto; // восстановим
+								MakeList(hDlg);
+								MakeListItemInfo(hDlg,0);
+								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+							}
 							return true;
 						}
 						else if (vk==VK_RETURN)
@@ -1923,6 +1770,8 @@ VOID ReadSettings()
 	settings.Get(0,L"User",opt.ProxyUser,ARRAYSIZE(opt.ProxyUser),L"");
 	settings.Get(0,L"Pass",opt.ProxyPass,ARRAYSIZE(opt.ProxyPass),L"");
 	opt.ShowDisable=settings.Get(0,L"ShowDisable",1);
+	opt.GetNew=0;
+	opt.DateFrom[0]=opt.DateTo[0]=0;
 
 	wchar_t Buf[MAX_PATH];
 	settings.Get(0,L"Dir",Buf,ARRAYSIZE(Buf),L"%TEMP%\\UpdateEx\\");
@@ -2255,6 +2104,9 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 		MessageBeep(MB_ICONASTERISK);
 		return nullptr;
 	}
+	opt.GetNew=0;
+	opt.DateFrom[0]=opt.DateTo[0]=0;
+
 	int Auto=opt.Auto;
 	opt.Auto=0;
 	CleanTime();
@@ -2498,7 +2350,8 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 							if (MInfo[i].Flags&UPD)
 							{
 								wchar_t destpath[MAX_PATH];
-								GetModuleDir(MInfo[i].ModuleName,destpath);
+								if (MInfo[i].Flags&NEW) lstrcpy(destpath,MInfo[i].ModuleName);
+								else GetModuleDir(MInfo[i].ModuleName,destpath);
 								// коррекция
 								{
 									int len=lstrlen(destpath);
@@ -2519,7 +2372,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 
 										bool Result=false;
 										wchar_t BakName[MAX_PATH];
-										if (MInfo[i].Guid!=FarGuid)
+										if (!(MInfo[i].Flags&NEW) && MInfo[i].Guid!=FarGuid)
 										{
 											lstrcat(lstrcpy(BakName,ipc.TempDirectory),StrRChr(MInfo[i].ModuleName,nullptr,L'\\')+1);
 											CopyFile(MInfo[i].ModuleName,BakName,FALSE);
@@ -2564,7 +2417,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 												TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 												mprintf(L"Warning: %s incorrectly installed\n",MInfo[i].ArcName);
 											}
-											if (MInfo[i].Guid!=FarGuid)
+											if (!(MInfo[i].Flags&NEW) && MInfo[i].Guid!=FarGuid)
 												DeleteFile(BakName);
 											if (ipc.DelAfterInstall==1 || (ipc.DelAfterInstall==2&&i==0))
 												DeleteFile(local_arc);
@@ -2576,7 +2429,7 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 										{
 											TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
 											mprintf(L"error\n");
-											if (MInfo[i].Guid!=FarGuid)
+											if (!(MInfo[i].Flags&NEW) && MInfo[i].Guid!=FarGuid)
 											{
 												CopyFile(BakName,MInfo[i].ModuleName,FALSE);
 												DeleteFile(BakName);
