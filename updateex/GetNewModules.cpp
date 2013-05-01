@@ -105,6 +105,9 @@ bool GetNewModulesDialog()
 	{
 		if (Info.DialogRun(hDlg)==6)
 		{
+			wchar_t Buf[80];
+			FSF.sprintf(Buf,L"%s - %s - %s",(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0),MSG(MNewModules),(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
+			Info.SendDlgMessage(::hDlg,DM_SETTEXTPTR,DlgBORDER,Buf);
 			if (opt.Date)
 			{
 				lstrcpy(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));

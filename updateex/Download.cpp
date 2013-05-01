@@ -27,7 +27,7 @@ command=
 			}
 		}
 // test GetNew
-//lstrcat(Str,L"<uid>2099f3f1-a147-4d0f-bb82-60e472513bc0</uid>"); //BatchRen
+lstrcat(Str,L"<uid>A227A268-5682-4C83-9341-EAE3405D4666</uid>");
 		lstrcat(Str,HeaderEnd);
 		size_t Size=WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),nullptr,0,nullptr,nullptr)+1;
 		cInfo=(char*)malloc(Size);

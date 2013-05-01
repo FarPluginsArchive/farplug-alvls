@@ -993,7 +993,10 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	else if (Percent!=-1) FSF.sprintf(Status,L"%3d%%",Percent);
 	else Status[0]=0;
 
-	FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+	if (opt.GetNew)
+		FSF.sprintf(Buf,L"%s%-38.38s %c %-12.12s  %10.10s %7.7s",L"  ",Cur->Title,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+	else
+		FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
 	Item.Text=Buf;
 }
 
@@ -1041,6 +1044,14 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		}
 		else
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf);
+		Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
+	}
+	else
+	{
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,L"");
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,L"");
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,L"");
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,(void*)MSG(opt.GetNew?MIsNonInfo2:MIsNonInfo));
 		Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 	}
 }
@@ -1225,14 +1236,19 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			{
 				FarColor Color;
 				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
-
 				if (CountUpdModules)
 					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
-				// ... иначе - в обычный цвет
-//				else
-//					Info.AdvControl(&MainGuid, ACTL_GETCOLOR, COL_DIALOGBOX,&Color);
 				Colors->Colors[0]=Color;
 			}
+/*
+			else if (Param1==DlgPATH && opt.GetNew)
+			{
+				FarColor Color;
+				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
+				Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGEDIT,&Color);
+				Colors->Colors[0]=Color;
+			}
+*/
 			break;
 
 	/************************************************************************/
@@ -1322,6 +1338,8 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_CTRLH;
+				else if (Param1==DlgPATH && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED)
+					goto GOTO_F4;
 				else if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_F7;
@@ -1417,10 +1435,34 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 							MessageBeep(MB_OK);
 							return true;
 						}
+						else if (vk==VK_F4)
+						{
+GOTO_F4:
+							if (opt.GetNew)
+							{
+								intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+								ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+								ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+								if (Cur)
+								{
+									wchar_t Buf[MAX_PATH];
+									if (Info.InputBox(&MainGuid,&InputBoxGuid,MSG(MName),MSG(MEditPath),nullptr,Cur->ModuleName,Buf,MAX_PATH,nullptr,FIB_EXPANDENV|FIB_EDITPATH|FIB_BUTTONS))
+									{
+										FSF.Trim(Buf);
+										if (*Buf)
+										{
+											lstrcpy(Cur->ModuleName,Buf);
+											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,Cur->ModuleName);
+											return true;
+										}
+									}
+								}
+							}
+						}
 						else if (vk==VK_F7)
 						{
 GOTO_F7:
-							if (GetNewModulesDialog())
+							if (GetStatus()!=S_DOWNLOAD && GetStatus()!=S_COMPLET && GetNewModulesDialog())
 							{
 								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
 								if (WaitForSingleObject(UnlockEvent,0)==WAIT_TIMEOUT)
@@ -1491,8 +1533,8 @@ GOTO_F7:
 								SaveTime();
 								opt.Auto=Auto; // восстановим
 								MakeList(hDlg);
-								MakeListItemInfo(hDlg,0);
 								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+								MakeListItemInfo(hDlg,0);
 							}
 							return true;
 						}
@@ -1549,7 +1591,7 @@ GOTO_F7:
 						if (vk==0x48) // VK_H
 						{
 GOTO_CTRLH:
-							if (GetStatus()!=S_DOWNLOAD)
+							if (GetStatus()!=S_DOWNLOAD && !opt.GetNew)
 							{
 								opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
 								PluginSettings settings(MainGuid, Info.SettingsControl);
@@ -1587,21 +1629,27 @@ GOTO_CTRLH:
 
 						if ((isCtrl && vk==VK_PRIOR) || (isCtrlShift && vk==VK_PRIOR)) //PgUp
 						{
-							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
-							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
-							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-							if (Cur)
+							if (!opt.GetNew)
 							{
-								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
-								wchar_t PluginDirectory[MAX_PATH];
-								GetModuleDir(Cur->ModuleName,PluginDirectory);
-								FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
-								Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETPANELDIRECTORY,0,&dirInfo);
-								if (opt.SetActive)
-									Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETACTIVEPANEL,0,0);
-								Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
-								return true;
+								intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+								ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+								ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+								if (Cur)
+								{
+									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,FALSE,0);
+									wchar_t PluginDirectory[MAX_PATH];
+									GetModuleDir(Cur->ModuleName,PluginDirectory);
+									FarPanelDirectory dirInfo={sizeof(FarPanelDirectory),PluginDirectory,nullptr,{0},nullptr};
+									Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETPANELDIRECTORY,0,&dirInfo);
+									if (opt.SetActive)
+										Info.PanelControl(isCtrl?(isLActive?PANEL_ACTIVE:PANEL_PASSIVE):(isLActive?PANEL_PASSIVE:PANEL_ACTIVE),FCTL_SETACTIVEPANEL,0,0);
+									Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+									return true;
+								}
 							}
+							Info.SendDlgMessage(hDlg,DM_SHOWDIALOG,TRUE,0);
+							MessageBeep(MB_OK);
+							return true;
 						}
 						else if ((isCtrl && vk==VK_NEXT) || (isCtrlShift && vk==VK_NEXT))//PgDn
 						{
