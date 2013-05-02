@@ -1,3 +1,123 @@
+unsigned long CRC32(unsigned long crc, const char *buf, unsigned int len)
+{
+	static unsigned long crc_table[256];
+	if (!crc_table[1])
+	{
+		unsigned long c;
+		int n, k;
+		for (n = 0; n < 256; n++)
+		{
+			c = (unsigned long)n;
+			for (k = 0; k < 8; k++) c = (c >> 1) ^(c & 1 ? 0xedb88320L : 0);
+			crc_table[n] = c;
+		}
+	}
+	crc = crc ^ 0xffffffffL;
+	while (len-- > 0)
+	{
+		crc = crc_table[(crc ^(*buf++)) & 0xff] ^(crc >> 8);
+	}
+	return crc ^ 0xffffffffL;
+}
+
+enum
+{
+	CRC32_GETGLOBALINFOW   = 0x633EC0C4,
+};
+
+DWORD ExportCRC32W[] =
+{
+	CRC32_GETGLOBALINFOW,
+};
+
+enum PluginType
+{
+	NOT_PLUGIN=0,
+	UNICODE_PLUGIN=1,
+};
+
+PluginType IsModulePlugin2(PBYTE hModule)
+{
+	DWORD dwExportAddr;
+	PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hModule;
+	PIMAGE_NT_HEADERS pPEHeader;
+	{
+		if (pDOSHeader->e_magic != IMAGE_DOS_SIGNATURE)
+			return NOT_PLUGIN;
+
+		pPEHeader = (PIMAGE_NT_HEADERS)&hModule[pDOSHeader->e_lfanew];
+
+		if (pPEHeader->Signature != IMAGE_NT_SIGNATURE)
+			return NOT_PLUGIN;
+
+		if (!(pPEHeader->FileHeader.Characteristics & IMAGE_FILE_DLL))
+			return NOT_PLUGIN;
+
+		if (pPEHeader->FileHeader.Machine!=
+#ifdef _WIN64
+#ifdef _M_IA64
+		        IMAGE_FILE_MACHINE_IA64
+#else
+		        IMAGE_FILE_MACHINE_AMD64
+#endif
+#else
+		        IMAGE_FILE_MACHINE_I386
+#endif
+		   )
+			return NOT_PLUGIN;
+
+		dwExportAddr = pPEHeader->OptionalHeader.DataDirectory[0].VirtualAddress;
+
+		if (!dwExportAddr)
+			return NOT_PLUGIN;
+
+		PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pPEHeader);
+
+		for (int i = 0; i < pPEHeader->FileHeader.NumberOfSections; i++)
+		{
+			if ((pSection[i].VirtualAddress == dwExportAddr) ||
+			        ((pSection[i].VirtualAddress <= dwExportAddr) && ((pSection[i].Misc.VirtualSize+pSection[i].VirtualAddress) > dwExportAddr)))
+			{
+				int nDiff = pSection[i].VirtualAddress-pSection[i].PointerToRawData;
+				PIMAGE_EXPORT_DIRECTORY pExportDir = (PIMAGE_EXPORT_DIRECTORY)&hModule[dwExportAddr-nDiff];
+				DWORD* pNames = (DWORD *)&hModule[pExportDir->AddressOfNames-nDiff];
+				for (DWORD n = 0; n < pExportDir->NumberOfNames; n++)
+				{
+					const char *lpExportName = (const char *)&hModule[pNames[n]-nDiff];
+					DWORD dwCRC32 = CRC32(0, lpExportName, (unsigned int)lstrlenA(lpExportName));
+					for (size_t j = 0; j < ARRAYSIZE(ExportCRC32W); j++)
+						if (dwCRC32 == ExportCRC32W[j])
+							return UNICODE_PLUGIN;
+				}
+			}
+		}
+		return NOT_PLUGIN;
+	}
+	return NOT_PLUGIN;
+}
+
+bool IsModulePlugin(const wchar_t *lpModuleName)
+{
+	PluginType Result = NOT_PLUGIN;
+	HANDLE hModuleFile = CreateFile(lpModuleName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,0,0);
+	if (hModuleFile != INVALID_HANDLE_VALUE)
+	{
+		HANDLE hModuleMapping = CreateFileMapping(hModuleFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+		if (hModuleMapping)
+		{
+			PBYTE pData = (PBYTE)MapViewOfFile(hModuleMapping, FILE_MAP_READ, 0, 0, 0);
+			if (pData)
+			{
+				Result = IsModulePlugin2(pData);
+				UnmapViewOfFile(pData);
+			}
+			CloseHandle(hModuleMapping);
+		}
+		CloseHandle(hModuleFile);
+	}
+	return Result?true:false;
+}
+
 bool FindFile(const wchar_t *Dir, const wchar_t *Pattern, wchar_t *FileName)
 {
 	bool ret=false;
@@ -34,9 +154,12 @@ bool FindFile(const wchar_t *Dir, const wchar_t *Pattern, wchar_t *FileName)
 				{
 					if (!lstrcmpi(FindData.cFileName,Pattern) || !lstrcmpi(StrRChr(FindData.cFileName,nullptr,L'.'),Pattern))
 					{
-						lstrcpy(FileName,FindPath);
-						ret=true;
-						break;
+						if (!lstrcmpi(FindData.cFileName,L"far.exe") || IsModulePlugin(FindPath))
+						{
+							lstrcpy(FileName,FindPath);
+							ret=true;
+							break;
+						}
 					}
 				}
 			} while (FindNextFile(hFind,&FindData));
@@ -45,7 +168,6 @@ bool FindFile(const wchar_t *Dir, const wchar_t *Pattern, wchar_t *FileName)
 	}
 	return ret;
 }
-
 
 bool Move(const wchar_t* Src, const wchar_t* Dst)
 {
