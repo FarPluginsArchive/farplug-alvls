@@ -594,10 +594,10 @@ DWORD GetInstallModulesInfo()
 						GetCurrentModuleVersion(FGPInfo->ModuleName,ipc.Modules[i].Version);
 					else
 						ipc.Modules[i].Version=FGPInfo->GInfo->Version;
-					lstrcpyn(ipc.Modules[i].Title,FGPInfo->GInfo->Title,63);
-					lstrcpyn(ipc.Modules[i].Description,FGPInfo->GInfo->Description,2047);
-					lstrcpyn(ipc.Modules[i].Author,FGPInfo->GInfo->Author,MAX_PATH-1);
-					lstrcpyn(ipc.Modules[i].ModuleName,FGPInfo->ModuleName,MAX_PATH-1);
+					lstrcpyn(ipc.Modules[i].Title,FGPInfo->GInfo->Title,64);
+					lstrcpyn(ipc.Modules[i].Description,FGPInfo->GInfo->Description,2048);
+					lstrcpyn(ipc.Modules[i].Author,FGPInfo->GInfo->Author,MAX_PATH);
+					lstrcpyn(ipc.Modules[i].ModuleName,FGPInfo->ModuleName,MAX_PATH);
 					free(FGPInfo);
 				}
 				else
@@ -801,13 +801,13 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 								Buf=CharToWChar(plug->Attribute("title"));
 								if (Buf)
 								{
-									lstrcpyn(CurInfo->Title,Buf,63);
+									lstrcpyn(CurInfo->Title,Buf,64);
 									free(Buf); Buf=nullptr;
 								}
 								Buf=CharToWChar(plug->Attribute("description"));
 								if (Buf)
 								{
-									lstrcpyn(CurInfo->Description,Buf,2047);
+									lstrcpyn(CurInfo->Description,Buf,2048);
 									free(Buf); Buf=nullptr;
 								}
 							}
@@ -1007,21 +1007,47 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 	if (Cur)
 	{
 		wchar_t Buf[MAX_PATH];
-		if (lstrlen(Cur->Description)>(80-2-2))
+		int len=lstrlen(Cur->Description);
+		if (len<=(80-2-2))
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Cur->Description);
+		else if (opt.GetNew)
 		{
-			lstrcpyn(Buf,Cur->Description,80-2-2-3);
+			lstrcpyn(Buf,Cur->Description,76+1);
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Buf);
+			if (len-76>76)
+			{
+				lstrcpyn(Buf,Cur->Description+76,76-3+1);
+				lstrcat(Buf,L"...");
+			}
+			else
+				lstrcpyn(Buf,Cur->Description+76,76+1);
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,Buf);
+		}
+		else
+		{
+			lstrcpyn(Buf,Cur->Description,76-3+1);
 			lstrcat(Buf,L"...");
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Buf);
 		}
-		else
-			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Cur->Description);
-		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,Cur->Author);
+
+		len=lstrlen(Cur->Author);
+		if (!opt.GetNew)
+		{
+			if (len<=(80-2-2))
+				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,Cur->Author);
+			else
+			{
+				lstrcpyn(Buf,Cur->Author,76-3+1);
+				lstrcat(Buf,L"...");
+				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,Buf);
+			}
+		}
+
 		lstrcpy(Buf,Cur->ModuleName);
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,FSF.TruncPathStr(Buf,80-2-2));
+
 		if (Cur->Flags&ERR)
-		{
 			lstrcpy(Buf,MSG(MCantDownloadArc));
-		}
 		else
 		{
 			if (Cur->Flags&STD)
@@ -1038,13 +1064,12 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		if (lstrlen(Buf)>(80-2-2))
 		{
 			wchar_t Buf2[80];
-			lstrcpyn(Buf2,Buf,80-2-2-3);
+			lstrcpyn(Buf2,Buf,80-2-2-3+1);
 			lstrcat(Buf2,L"...");
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf2);
 		}
 		else
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,Buf);
-		Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 	}
 	else
 	{
@@ -1052,8 +1077,8 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,L"");
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,L"");
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,(void*)MSG(opt.GetNew?MIsNonInfo2:MIsNonInfo));
-		Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 	}
+	Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 }
 
 bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
@@ -1240,15 +1265,6 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
 				Colors->Colors[0]=Color;
 			}
-/*
-			else if (Param1==DlgPATH && opt.GetNew)
-			{
-				FarColor Color;
-				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
-				Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGEDIT,&Color);
-				Colors->Colors[0]=Color;
-			}
-*/
 			break;
 
 	/************************************************************************/
@@ -1338,7 +1354,14 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_CTRLH;
-				else if (Param1==DlgPATH && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED)
+				else if (Param1==DlgINFO && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+					goto GOTO_F2;
+				else if ((Param1==DlgDESC || opt.GetNew&&Param1==DlgAUTHOR) && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+					goto GOTO_F3;
+				else if (Param1==DlgPATH && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_F4;
 				else if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
@@ -1408,8 +1431,9 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 							MessageBeep(MB_OK);
 							return true;
 						}
-						else if (vk==VK_F3)
+						else if (vk==VK_F2)
 						{
+GOTO_F2:
 							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
 							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
 							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
@@ -1435,6 +1459,35 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 							MessageBeep(MB_OK);
 							return true;
 						}
+						else if (vk==VK_F3)
+						{
+GOTO_F3:
+							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+							if (Cur)
+							{
+								wchar_t TmpFileName[MAX_PATH];
+								FSF.MkTemp(TmpFileName,MAX_PATH,L"DESC");
+								SECURITY_ATTRIBUTES sa;
+								memset(&sa,0,sizeof(sa));
+								sa.nLength=sizeof(sa);
+								bool bCreate=false;
+								HANDLE hFile=CreateFile(TmpFileName,GENERIC_WRITE,FILE_SHARE_READ,&sa,CREATE_ALWAYS,FILE_FLAG_SEQUENTIAL_SCAN,0);
+								if (hFile!=INVALID_HANDLE_VALUE)
+								{
+									DWORD BytesWritten;
+									if (WriteFile(hFile,(LPCVOID)Cur->Description,(DWORD)(lstrlen(Cur->Description)*sizeof(wchar_t)), &BytesWritten, 0))
+										bCreate=true;
+									CloseHandle(hFile);
+								}
+								if (bCreate)
+									Info.Viewer(TmpFileName,Cur->Title,0,0,-1,-1,VF_DISABLEHISTORY|VF_DELETEONLYFILEONCLOSE,CP_DEFAULT);
+								return true;
+							}
+							MessageBeep(MB_OK);
+							return true;
+						}
 						else if (vk==VK_F4)
 						{
 GOTO_F4:
@@ -1446,15 +1499,18 @@ GOTO_F4:
 								if (Cur)
 								{
 									wchar_t Buf[MAX_PATH];
-									if (Info.InputBox(&MainGuid,&InputBoxGuid,MSG(MName),MSG(MEditPath),nullptr,Cur->ModuleName,Buf,MAX_PATH,nullptr,FIB_EXPANDENV|FIB_EDITPATH|FIB_BUTTONS))
+									if (Info.InputBox(&MainGuid,&InputBoxGuid,MSG(MName),MSG(MEditPath),nullptr,Cur->ModuleName,Buf,MAX_PATH,nullptr,FIB_EXPANDENV|FIB_EDITPATH|FIB_BUTTONS|FIB_ENABLEEMPTY))
 									{
 										FSF.Trim(Buf);
 										if (*Buf)
 										{
-											lstrcpy(Cur->ModuleName,Buf);
-											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,Cur->ModuleName);
-											return true;
+											if (Buf[lstrlen(Buf)-1]!=L'\\') lstrcat(Buf,L"\\");
 										}
+										else
+											GetNewModuleDir(Cur->ArcName,Buf);
+										lstrcpy(Cur->ModuleName,Buf);
+										Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,FSF.TruncPathStr(Buf,80-2-2));
+										return true;
 									}
 								}
 							}
@@ -1784,7 +1840,7 @@ bool ShowModulesDialog()
 		/* 1*/{DI_LISTBOX,    1, 1,78,16, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
 		/* 2*/{DI_TEXT,      -1,17, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
 		/* 3*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,       DIF_WORDWRAP|DIF_SHOWAMPERSAND, L"",0,0},
+		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 5*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 6*/{DI_TEXT,       2,21,78,21,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
 		/* 7*/{DI_TEXT,      -1,22, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
