@@ -1653,7 +1653,8 @@ GOTO_CTRLH:
 								opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
 								PluginSettings settings(MainGuid, Info.SettingsControl);
 								settings.Set(0,L"ShowDisable",opt.ShowDisable);
-								MakeList(hDlg,true);
+								MakeList(hDlg);
+								MakeListItemInfo(hDlg,0);
 							}
 							else
 								MessageBeep(MB_OK);
