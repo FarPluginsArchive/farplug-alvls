@@ -1482,7 +1482,8 @@ GOTO_F3:
 									CloseHandle(hFile);
 								}
 								if (bCreate)
-									Info.Viewer(TmpFileName,Cur->Title,0,0,-1,-1,VF_DISABLEHISTORY|VF_DELETEONLYFILEONCLOSE,CP_DEFAULT);
+									if (Info.Viewer(TmpFileName,Cur->Title,0,0,-1,-1,VF_DISABLEHISTORY|VF_DELETEONLYFILEONCLOSE,CP_DEFAULT))
+										Info.AdvControl(&MainGuid,ACTL_REDRAWALL,0,0);
 								return true;
 							}
 							MessageBeep(MB_OK);
