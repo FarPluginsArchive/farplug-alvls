@@ -1759,7 +1759,7 @@ GOTO_CTRLH:
 		{
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
 			if (GetStatus()==S_COMPLET)
-				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(MUpdate));
+				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(opt.GetNew?MInstall:MUpdate));
 			Info.SendDlgMessage(hDlg,DM_ENABLE,DlgUPD,(void*)1);
 			MakeList(hDlg,true);
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
