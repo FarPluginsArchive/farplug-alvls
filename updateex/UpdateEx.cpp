@@ -553,6 +553,23 @@ bool GetCurrentModuleVersion(LPCTSTR Module,VersionInfo &vi)
 	return ret;
 }
 
+int WINAPI SortList(const void *el1, const void *el2, void * el3)
+{
+	struct ModuleInfo *Item1=(struct ModuleInfo *)el1, *Item2=(struct ModuleInfo *)el2;
+
+	if (Item1->Flags&NEW)
+	{
+		if (!(Item2->Flags&NEW))
+			return 1;
+	}
+	else
+	{
+		if (Item2->Flags&NEW)
+			return -1;
+	}
+	return FSF.LStricmp(Item1->Title,Item2->Title);
+}
+
 DWORD GetInstallModulesInfo()
 {
 	DWORD Ret=S_NONE;
@@ -950,6 +967,10 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			Ret=S_CANTGETPLUGUPDINFO;
 	}
 	SetStatus(Ret);
+	// сортируем
+	if ((Ret==S_UPTODATE || Ret==S_UPDATE))
+		FSF.qsort(&ipc.Modules[1],ipc.CountModules-1,sizeof(ipc.Modules[1]),SortList,nullptr);
+
 	if (ListGuid) free(ListGuid);
 	DeleteFile(ipc.FarUpdateList);
 	DeleteFile(ipc.PlugUpdateList);
@@ -1009,7 +1030,10 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		wchar_t Buf[MAX_PATH];
 		int len=lstrlen(Cur->Description);
 		if (len<=(80-2-2))
+		{
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Cur->Description);
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,L"");
+		}
 		else if (opt.GetNew)
 		{
 			lstrcpyn(Buf,Cur->Description,76+1);
@@ -1028,6 +1052,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 			lstrcpyn(Buf,Cur->Description,76-3+1);
 			lstrcat(Buf,L"...");
 			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,Buf);
+			Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,L"");
 		}
 
 		len=lstrlen(Cur->Author);
