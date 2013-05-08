@@ -95,6 +95,8 @@ struct OPT
 	DWORD SetActive;
 	DWORD Date;
 	DWORD GetNew;
+	DWORD ShowDate;
+	DWORD ShowDraw;
 	DWORD Proxy;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
@@ -1015,9 +1017,19 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	else Status[0]=0;
 
 	if (opt.GetNew)
-		FSF.sprintf(Buf,L"%s%-38.38s %c %-12.12s  %10.10s %7.7s",L"  ",Cur->Title,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+		FSF.sprintf(Buf,L"%s%-35.35s%c%c%c%-14.14s%c%10.10s%c%7.7s",L"  ",Cur->Title,opt.ShowDraw?0x2502:L' ',
+										Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',NewVer,opt.ShowDraw?0x2502:L' ',
+										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
+	else if (!opt.ShowDate)
+		FSF.sprintf(Buf,L"%c%c%-22.22s%c%-14.14s%c%c%c%-14.14s%c%10.10s%c%7.7s",
+										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
+										Ver,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',NewVer,opt.ShowDraw?0x2502:L' ',
+										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
 	else
-		FSF.sprintf(Buf,L"%c%c%-15.15s %-12.12s %10.10s %c %-12.12s %10.10s %7.7s",Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,Ver,Cur->Date,Cur->Flags&UPD?0x2192:L' ',NewVer,(Cur->Flags&INFO)?Cur->NewDate:L"",Status);
+		FSF.sprintf(Buf,L"%c%c%-15.15s%c%-12.12s%c%10.10s%c%c%c%-12.12s%c%10.10s%c%7.7s",
+										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
+										Ver,opt.ShowDraw?0x2502:L' ',Cur->Date,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',
+										NewVer,opt.ShowDraw?0x2502:L' ',(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
 	Item.Text=Buf;
 }
 
@@ -1106,7 +1118,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 	Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
 }
 
-bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
+bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 {
 	CountUpdModules=0;
 	struct FarListInfo ListInfo={sizeof(FarListInfo)};
@@ -1127,7 +1139,7 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 			wchar_t Buf[MAX_PATH];
 			struct FarListItem Item={};
 			MakeListItem(Cur,Buf,Item);
-			if (!bSetCurPos && ii==0)
+			if (!SetCurPos && ii==0)
 				Item.Flags|=LIF_SELECTED;
 			struct FarList List={sizeof(FarList)};
 			List.ItemsNumber=1;
@@ -1146,10 +1158,10 @@ bool MakeList(HANDLE hDlg,bool bSetCurPos=false)
 			}
 		}
 	}
-	if (bSetCurPos)
+	if (SetCurPos)
 	{
 		FarListPos ListPos={sizeof(FarListPos)};
-		ListPos.SelectPos=ListInfo.SelectPos;
+		ListPos.SelectPos=SetCurPos>0?SetCurPos:ListInfo.SelectPos;
 		ListPos.TopPos=ListInfo.TopPos;
 		Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&ListPos);
 	}
@@ -1620,6 +1632,58 @@ GOTO_F7:
 							}
 							return true;
 						}
+						else if (vk==VK_F8)
+						{
+							if (!opt.GetNew && GetStatus()!=S_DOWNLOAD && GetStatus()!=S_COMPLET)
+							{
+								intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+								ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+								ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+								if (Cur && Cur->Guid!=FarGuid && Cur->Guid!=MainGuid)
+								{
+									LPCWSTR Items[]={MSG(MDel),MSG(MDelBody),Cur->Title};
+									if (!Info.Message(&MainGuid,&MsgAskDelGuid,FMSG_MB_YESNO|FMSG_WARNING,nullptr,Items,ARRAYSIZE(Items),0))
+									{
+										Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,false,0);
+										HANDLE hPlugin = (HANDLE)Info.PluginsControl(INVALID_HANDLE_VALUE,PCTL_FINDPLUGIN,PFM_MODULENAME,Cur->ModuleName);
+										if (hPlugin && Info.PluginsControl(hPlugin,PCTL_UNLOADPLUGIN,0,nullptr))
+										{
+											wchar_t delpath[MAX_PATH];
+											lstrcpy(delpath,Cur->ModuleName);
+											*(StrRChr(delpath,nullptr,L'\\'))=0;
+											delpath[lstrlen(delpath)+1]=0;
+											SHFILEOPSTRUCT fop={};
+											fop.wFunc=FO_DELETE;
+											fop.pFrom=delpath;
+											fop.pTo = L"\0\0";
+											fop.fFlags=FOF_NOCONFIRMATION|FOF_SILENT|FOF_ALLOWUNDO;
+											DWORD Result=SHFileOperation(&fop);
+											if (!Result && !fop.fAnyOperationsAborted)
+											{
+												size_t i=0;
+												for( ; i<ipc.CountModules; i++)
+												{
+													if (Cur->ID==ipc.Modules[i].ID)
+														break;
+												}
+												for(size_t j=i+1; i && i<ipc.CountModules && j<ipc.CountModules; i++,j++)
+													memcpy(&ipc.Modules[i],&ipc.Modules[j],sizeof(ModuleInfo));
+												ipc.Modules=(ModuleInfo *)realloc(ipc.Modules,(--ipc.CountModules)*sizeof(ModuleInfo));
+												MakeList(hDlg,Pos-1);
+												MakeListItemInfo(hDlg,(void*)(Pos-1));
+												Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
+												return true;
+											}
+										}
+										Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
+									}
+									else
+										return true;
+								}
+							}
+							MessageBeep(MB_ICONASTERISK);
+							return true;
+						}
 						else if (vk==VK_RETURN)
 						{
 							Info.SendDlgMessage(hDlg,DM_CLOSE,DlgUPD,0);
@@ -1675,11 +1739,37 @@ GOTO_F7:
 GOTO_CTRLH:
 							if (GetStatus()!=S_DOWNLOAD && !opt.GetNew)
 							{
-								opt.ShowDisable?opt.ShowDisable=0:opt.ShowDisable=1;
+								opt.ShowDisable=opt.ShowDisable?0:1;
 								PluginSettings settings(MainGuid, Info.SettingsControl);
 								settings.Set(0,L"ShowDisable",opt.ShowDisable);
 								MakeList(hDlg);
 								MakeListItemInfo(hDlg,0);
+							}
+							else
+								MessageBeep(MB_OK);
+							return true;
+						}
+						else if (vk==0x30) // VK_0
+						{
+							if (GetStatus()!=S_DOWNLOAD)
+							{
+								opt.ShowDraw=opt.ShowDraw?0:1;
+								PluginSettings settings(MainGuid, Info.SettingsControl);
+								settings.Set(0,L"ShowDraw",opt.ShowDraw);
+								MakeList(hDlg,-1);
+							}
+							else
+								MessageBeep(MB_OK);
+							return true;
+						}
+						else if (vk==0x31) // VK_1
+						{
+							if (GetStatus()!=S_DOWNLOAD && !opt.GetNew)
+							{
+								opt.ShowDate=opt.ShowDate?0:1;
+								PluginSettings settings(MainGuid, Info.SettingsControl);
+								settings.Set(0,L"ShowDate",opt.ShowDate);
+								MakeList(hDlg,-1);
 							}
 							else
 								MessageBeep(MB_OK);
@@ -1786,7 +1876,7 @@ GOTO_CTRLH:
 			if (GetStatus()==S_COMPLET)
 				Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgUPD,(void*)MSG(opt.GetNew?MInstall:MUpdate));
 			Info.SendDlgMessage(hDlg,DM_ENABLE,DlgUPD,(void*)1);
-			MakeList(hDlg,true);
+			MakeList(hDlg,-1);
 			Info.SendDlgMessage(hDlg,DM_ENABLEREDRAW,true,0);
 			break;
 		}
@@ -1903,6 +1993,8 @@ VOID ReadSettings()
 	opt.ShowDisable=settings.Get(0,L"ShowDisable",1);
 	opt.GetNew=0;
 	opt.DateFrom[0]=opt.DateTo[0]=0;
+	opt.ShowDate=settings.Get(0,L"ShowDate",0);
+	opt.ShowDraw=settings.Get(0,L"ShowDraw",1);
 
 	wchar_t Buf[MAX_PATH];
 	settings.Get(0,L"Dir",Buf,ARRAYSIZE(Buf),L"%TEMP%\\UpdateEx\\");
