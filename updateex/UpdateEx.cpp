@@ -1651,6 +1651,10 @@ GOTO_F7:
 											wchar_t delpath[MAX_PATH];
 											lstrcpy(delpath,Cur->ModuleName);
 											*(StrRChr(delpath,nullptr,L'\\'))=0;
+											// коррекция
+											int len=lstrlen(delpath);
+											if (len>4 && !lstrcmpi(&delpath[len-4],L"\\bin"))
+												delpath[len-4]=0;
 											delpath[lstrlen(delpath)+1]=0;
 											SHFILEOPSTRUCT fop={};
 											fop.wFunc=FO_DELETE;
