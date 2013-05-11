@@ -1537,7 +1537,7 @@ GOTO_F4:
 								if (Cur)
 								{
 									wchar_t Buf[MAX_PATH];
-									if (Info.InputBox(&MainGuid,&InputBoxGuid,MSG(MName),MSG(MEditPath),nullptr,Cur->ModuleName,Buf,MAX_PATH,nullptr,FIB_EXPANDENV|FIB_EDITPATH|FIB_BUTTONS|FIB_ENABLEEMPTY))
+									if (Info.InputBox(&MainGuid,&InputBoxGuid,MSG(MName),MSG(MEditPath),L"UpdEditPath",Cur->ModuleName,Buf,MAX_PATH,nullptr,FIB_EXPANDENV|FIB_EDITPATH|FIB_BUTTONS|FIB_ENABLEEMPTY|FIB_NOUSELASTHISTORY))
 									{
 										FSF.Trim(Buf);
 										if (*Buf)
