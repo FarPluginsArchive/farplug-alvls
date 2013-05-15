@@ -381,6 +381,19 @@ bool NeedUpdate(VersionInfo &Cur,VersionInfo &New, bool EqualBuild=false)
 	((New.Major==Cur.Major)&&(New.Minor==Cur.Minor)&&(New.Revision==Cur.Revision)&&(EqualBuild?New.Build>=Cur.Build:New.Build>Cur.Build));
 }
 
+bool CheckFarVer(VersionInfo &Cur,bool isANSI=false)
+{
+	if (!isANSI)
+	{
+		// проверка фара на билд 3410
+		VersionInfo FarVer3410=MAKEFARVERSION(3,0,0,3410,VS_RELEASE);
+		return NeedUpdate(FarVer3410,Cur,true);
+	}
+	else
+		// проверка фара на ANSI
+		return (Cur.Major==1 && Cur.Build<=2634);
+}
+
 bool ParentIsFar()
 {
 	typedef struct _smPROCESS_BASIC_INFORMATION {
@@ -609,7 +622,9 @@ DWORD GetInstallModulesInfo()
 					ipc.Modules[i].Guid=FGPInfo->GInfo->Guid;
 					if (FGPInfo->Flags&FPF_ANSI) ipc.Modules[i].Flags|=ANSI;
 					if (IsStdPlug(FGPInfo->GInfo->Guid)) ipc.Modules[i].Flags|=STD;
-					if (FGPInfo->Flags&FPF_ANSI)
+					VersionInfo CurFarVer={0,0,0,0};
+					Info.AdvControl(&MainGuid,ACTL_GETFARMANAGERVERSION,0,&CurFarVer);
+					if (FGPInfo->Flags&FPF_ANSI && !CheckFarVer(CurFarVer)) // т.е. билд старее 3410
 						GetCurrentModuleVersion(FGPInfo->ModuleName,ipc.Modules[i].Version);
 					else
 						ipc.Modules[i].Version=FGPInfo->GInfo->Version;
@@ -883,7 +898,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 												free(Buf); Buf=nullptr;
 											}
 
-											if (NeedUpdate(MinFarVer,CurFarVer,true))
+											if (NeedUpdate(MinFarVer,CurFarVer,true) || CheckFarVer(CurFarVer,true))
 											{
 												// запрашиваем CurVer
 												Buf=CharToWChar(file->Attribute("version_major"));

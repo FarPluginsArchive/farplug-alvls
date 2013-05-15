@@ -43,7 +43,7 @@ command=
 		{
 			for (size_t i=0; i<ipc.CountModules; i++)
 			{
-				if (!(ipc.Modules[i].Flags&ANSI) && ipc.Modules[i].Guid!=NULLGuid && !IsStdPlug(ipc.Modules[i].Guid))
+				if (ipc.Modules[i].Guid!=NULLGuid && !IsStdPlug(ipc.Modules[i].Guid))
 				{
 					wchar_t p[37];
 					FSF.sprintf(BodyUID,L"<uid>%s</uid>",GuidToStr(ipc.Modules[i].Guid,p));

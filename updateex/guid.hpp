@@ -30,8 +30,6 @@ DEFINE_GUID(InputBoxGuid, 0x6950a466, 0x63ba, 0x4dea, 0xbb, 0xb2, 0x3a, 0x94, 0x
 DEFINE_GUID(MsgAskDelGuid, 0x4133c534, 0x3c10, 0x4b00, 0xa9, 0x51, 0x88, 0xce, 0x7c, 0x8c, 0x9a, 0xe8);
 
 // {00000000-0000-0000-0000-000000000000}
-DEFINE_GUID(FarGuid,0,0,0,0,0,0,0,0,0,0,0);
-// {00000000-0000-0000-0000-000000000000}
 DEFINE_GUID(NULLGuid,0,0,0,0,0,0,0,0,0,0,0);
 
 ///гуиды стандартных плагинов фара (17 штук!)
