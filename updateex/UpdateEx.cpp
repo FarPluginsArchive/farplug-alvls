@@ -748,9 +748,9 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			{
 				ipc.Modules[0].Flags|=INFO;
 
-				if (CmpListGuid(ListGuid,(GUID&)NULLGuid))
+				if (CmpListGuid(ListGuid,(GUID&)FarGuid))
 					ipc.Modules[0].Flags|=SKIP;
-				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion))
+				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion) || FSF.LStricmp(ipc.Modules[0].Date,ipc.Modules[0].NewDate))
 				{
 					ipc.Modules[0].Flags|=UPD;
 					Ret=S_UPDATE;
