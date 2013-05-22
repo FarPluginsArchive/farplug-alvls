@@ -605,6 +605,7 @@ DWORD GetInstallModulesInfo()
 			{
 				Info.AdvControl(&MainGuid,ACTL_GETFARMANAGERVERSION,0,&ipc.Modules[i].Version);
 				wchar_t *Far=L"Far Manager", *FarAuthor=L"Eugene Roshal & Far Group";
+				ipc.Modules[i].Guid=FarGuid;
 				lstrcpy(ipc.Modules[i].Title,Far);
 				lstrcpy(ipc.Modules[i].Description,Far);
 				lstrcpy(ipc.Modules[i].Author,FarAuthor);
