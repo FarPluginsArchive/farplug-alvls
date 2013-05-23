@@ -139,6 +139,7 @@ struct EventStruct
 };
 
 bool NeedRestart=false;
+bool ExitFAR=false;
 DWORD Status=S_NONE;
 size_t CountUpdModules;
 
@@ -510,8 +511,8 @@ VOID StartUpdate(bool Thread)
 			CloseHandle(pi.hThread);
 			if (!Thread)
 			{
-				LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
-				Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+				LPCWSTR Items[]={MSG(MName),MSG(MExitFAR),MSG(MExitFARAsk)};
+				ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0);
 			}
 			else
 			{
@@ -2193,6 +2194,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 {
 	while(WaitForSingleObject(StopEvent, 0)!=WAIT_OBJECT_0)
 	{
+		ExitFAR=false;
 		bool Time=false;
 		Time=IsTime();
 		if (Time)
@@ -2250,6 +2252,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 			DownloadUpdates();
 			SetEvent(UnlockEvent);
 		}
+		if (ExitFAR) Info.AdvControl(&MainGuid,ACTL_QUIT,0,0);
 		Sleep(1000);
 	}
 	return 0;
@@ -2349,7 +2352,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 	}
 	opt.GetNew=0;
 	opt.DateFrom[0]=opt.DateTo[0]=0;
-
+	ExitFAR=false;
 	int Auto=opt.Auto;
 	opt.Auto=0;
 	CleanTime();
@@ -2413,6 +2416,7 @@ HANDLE WINAPI OpenW(const OpenInfo* oInfo)
 	SaveTime();
 	opt.Auto=Auto; // восстановим
 	Clean();
+	if (ExitFAR) Info.AdvControl(&MainGuid,ACTL_QUIT,0,0);
 
 	return nullptr;
 }
@@ -2440,8 +2444,8 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 				}
 				case E_EXIT:
 				{
-					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR)};
-					Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_OK, nullptr, Items, ARRAYSIZE(Items), 0);
+					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR),MSG(MExitFARAsk)};
+					ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0);
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
