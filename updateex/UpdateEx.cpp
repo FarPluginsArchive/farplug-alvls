@@ -512,7 +512,13 @@ VOID StartUpdate(bool Thread)
 			if (!Thread)
 			{
 				LPCWSTR Items[]={MSG(MName),MSG(MExitFAR),MSG(MExitFARAsk)};
-				ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0);
+				if ((ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0))==0)
+				{
+					Console console;
+					TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+					mprintf(MSG(MExitFAR));
+					mprintf(L"\n\n");
+				}
 			}
 			else
 			{
@@ -2448,7 +2454,13 @@ intptr_t WINAPI ProcessSynchroEventW(const ProcessSynchroEventInfo *pInfo)
 				case E_EXIT:
 				{
 					LPCWSTR Items[]={MSG(MName),MSG(MExitFAR),MSG(MExitFARAsk)};
-					ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0);
+					if ((ExitFAR=!Info.Message(&MainGuid,&MsgExitFARGuid, FMSG_MB_YESNO, nullptr, Items, ARRAYSIZE(Items), 0))==0)
+					{
+						Console console;
+						TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+						mprintf(MSG(MExitFAR));
+						mprintf(L"\n\n");
+					}
 					SetEvent(reinterpret_cast<HANDLE>(es->Data));
 					break;
 				}
