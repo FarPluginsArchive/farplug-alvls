@@ -9,6 +9,7 @@ Console::Console()
 
 Console::~Console()
 {
+	Sleep(300);
 	Info.PanelControl(INVALID_HANDLE_VALUE, FCTL_SETUSERSCREEN, 0, nullptr);
 	Info.AdvControl(&MainGuid,ACTL_REDRAWALL, 0, nullptr);
 }
