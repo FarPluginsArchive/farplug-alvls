@@ -706,6 +706,7 @@ void GetUpdModulesInfo()
 		return;
 	}
 	Ret=S_UPTODATE;
+	CountUpdModules=0;
 
 	wchar_t *ListGuid=nullptr;
 	PluginSettings settings(MainGuid, Info.SettingsControl);
@@ -755,6 +756,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion) || FSF.LStricmp(ipc.Modules[0].Date,ipc.Modules[0].NewDate))
 				{
 					ipc.Modules[0].Flags|=UPD;
+					CountUpdModules++;
 					Ret=S_UPDATE;
 				}
 			}
@@ -968,6 +970,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 														else if (!(CurInfo->Flags&NEW) && NeedUpdate(CurInfo->Version,CurInfo->NewVersion))
 														{
 															CurInfo->Flags|=UPD;
+															CountUpdModules++;
 															Ret=S_UPDATE;
 														}
 													}
@@ -2153,9 +2156,9 @@ DWORD WINAPI NotifyProc(LPVOID)
 			tray_icondata.hIcon=tray_icon;
 			tray_icondata.uTimeout=NOTIFY_DURATION;
 			tray_icondata.dwInfoFlags=NIIF_INFO|NIIF_LARGE_ICON;
-			lstrcpy(tray_icondata.szInfo,MSG(MTrayNotify));
+			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdModules);
 			lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
-			lstrcpy(tray_icondata.szTip,MSG(MTrayNotify));
+			lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
 			tray_icondata.uCallbackMessage=WM_TRAY_TRAYMSG;
 
 			if (Shell_NotifyIcon(NIM_ADD, &tray_icondata))
