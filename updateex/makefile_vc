@@ -72,6 +72,7 @@ lng: lng.templ
 	@copy /b $(DLLNAME).example.config $(OUTDIR)\$(DLLNAME).example.config
 	@copy /b UpdateEx_ru.hlf $(OUTDIR)\UpdateEx_ru.hlf
 	@copy /b changelog $(OUTDIR)\changelog
+	@copy /b Readme.txt $(OUTDIR)\Readme.txt
 
 $(PCH): headers.cpp
 	@echo making precompiled headers

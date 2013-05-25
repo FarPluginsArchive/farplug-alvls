@@ -49,6 +49,8 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
  #Shift-Enter#        - открыть топик плагина на PlugRinG
 
+ #Shift-Ins#          - отправить архив плагина на PlugRinG
+
  #Ctrl-Ins#           - поместить в буфер обмена путь до модуля
 
  #Ctrl-0#             - скрыть разделительные линии в листе

@@ -392,7 +392,7 @@ bool CheckFarVer(VersionInfo &Cur,bool isANSI=false)
 	}
 	else
 		// проверка фара на ANSI
-		return (Cur.Major==1 && Cur.Build<=2634);
+		return (Cur.Major==1 && Cur.Minor!=80);
 }
 
 bool ParentIsFar()
