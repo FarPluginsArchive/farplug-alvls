@@ -750,6 +750,11 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			ipc.Modules[0].NewVersion.Build=GetPrivateProfileInt(Section,L"build",-1,ipc.FarUpdateList);
 			ipc.Modules[0].MinFarVersion=ipc.Modules[0].NewVersion;
 			GetPrivateProfileString(Section,L"date",L"",Buf,ARRAYSIZE(Buf),ipc.FarUpdateList);
+			// для последующей проверке на дату
+			wchar_t DateSrc[11],DateNew[11];
+			opt.Date?lstrcpy(DateSrc,ipc.Modules[0].Date):CopyReverseTime2(DateSrc,ipc.Modules[0].Date);
+			lstrcpyn(DateNew,Buf,11);
+
 			opt.Date?lstrcpyn(ipc.Modules[0].NewDate,Buf,11):CopyReverseTime(ipc.Modules[0].NewDate,Buf);
 			GetPrivateProfileString(Section,L"arc",L"",ipc.Modules[0].ArcName,ARRAYSIZE(ipc.Modules[0].ArcName),ipc.FarUpdateList);
 			// если получили имя архива и версия новее...
@@ -759,7 +764,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 
 				if (CmpListGuid(ListGuid,(GUID&)FarGuid))
 					ipc.Modules[0].Flags|=SKIP;
-				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion) || FSF.LStricmp(ipc.Modules[0].Date,ipc.Modules[0].NewDate))
+				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].NewVersion) || FSF.LStricmp(DateSrc,DateNew)<0)
 				{
 					ipc.Modules[0].Flags|=UPD;
 					CountUpdModules++;
