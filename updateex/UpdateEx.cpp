@@ -2332,14 +2332,14 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 	if (hThread)
 	{
 		SetEvent(StopEvent);
-		if (WaitForSingleObject(hThread,3000)== WAIT_TIMEOUT)
+		if (WaitForSingleObject(hThread,500)== WAIT_TIMEOUT)
 		{
 			DWORD ec = 0;
 			if (GetExitCodeThread(hThread, &ec) == STILL_ACTIVE)
 				TerminateThread(hThread, ec);
-			CloseHandle(hThread);
-			hThread=nullptr;
 		}
+		CloseHandle(hThread);
+		hThread=nullptr;
 	}
 	DeleteCriticalSection(&cs);
 	CloseHandle(StopEvent);
