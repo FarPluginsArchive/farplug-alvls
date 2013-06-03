@@ -2332,7 +2332,7 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 	if (hThread)
 	{
 		SetEvent(StopEvent);
-		if (WaitForSingleObject(hThread,500)== WAIT_TIMEOUT)
+//		if (WaitForSingleObject(hThread,500)== WAIT_TIMEOUT)
 		{
 			DWORD ec = 0;
 			if (GetExitCodeThread(hThread, &ec) == STILL_ACTIVE)
