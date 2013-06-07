@@ -1,7 +1,9 @@
 enum {
 t_week=6,
 t_month=30,
-t_quarter=90,
+t_quarter=91,
+t_halfyear=182,
+t_year=365,
 t_period=0
 };
 
@@ -74,6 +76,12 @@ intptr_t WINAPI GetNewModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1
 						SetPeriod(hDlg,t_quarter);
 						break;
 					case 3:
+						SetPeriod(hDlg,t_halfyear);
+						break;
+					case 4:
+						SetPeriod(hDlg,t_year);
+						break;
+					case 5:
 						SetPeriod(hDlg,t_period);
 						break;
 				}
@@ -126,7 +134,7 @@ bool GetNewModulesDialog()
 	};
 
 	// комбинированный список с шаблонами
-	FarListItem itemTime[4];
+	FarListItem itemTime[6];
 	int n = sizeof(itemTime) / sizeof(itemTime[0]);
 	for (int i = 0; i < n; i++)
 	{
