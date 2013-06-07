@@ -34,6 +34,20 @@ void SetPeriod(HANDLE hDlg,int Period)
 	Info.SendDlgMessage(hDlg,DM_EDITUNCHANGEDFLAG,2,(void*)1);
 }
 
+bool CheckDate(wchar_t *StrData)
+{
+	int num=StringToNumber(StrData,num);
+	if (num<1900)
+		return false;
+	num=StringToNumber(StrData+5,num);
+	if (num<1||num>12)
+		return false;
+	num=StringToNumber(StrData+8,num);
+	if (num<1||num>31)
+		return false;
+	return true;
+}
+
 intptr_t WINAPI GetNewModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,void *Param2)
 {
 	switch(Msg)
@@ -65,6 +79,31 @@ intptr_t WINAPI GetNewModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1
 				}
 				return Msg==DN_LISTHOTKEY?false:true;    // апи требует разного возврата - сделаем разным
 			}
+
+	/************************************************************************/
+
+		case DN_CLOSE:
+			if (Param1==6)
+			{
+				if (opt.Date)
+				{
+					lstrcpy(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+					lstrcpy(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
+				}
+				else
+				{
+					CopyReverseTime2(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+					CopyReverseTime2(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
+				}
+				if (CheckDate(opt.DateFrom) && CheckDate(opt.DateTo) && FSF.LStricmp(opt.DateFrom,opt.DateTo)<=0)
+					return true;
+				else
+				{
+					MessageBeep(MB_ICONASTERISK);
+					return false;
+				}
+			}
+
 	}
 	return Info.DefDlgProc(hDlg,Msg,Param1,Param2);
 }
@@ -108,16 +147,6 @@ bool GetNewModulesDialog()
 			wchar_t Buf[80];
 			FSF.sprintf(Buf,L"%s - %s - %s",(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0),MSG(MNewModules),(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
 			Info.SendDlgMessage(::hDlg,DM_SETTEXTPTR,DlgBORDER,Buf);
-			if (opt.Date)
-			{
-				lstrcpy(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
-				lstrcpy(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
-			}
-			else
-			{
-				CopyReverseTime2(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
-				CopyReverseTime2(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
-			}
 			ret=true;
 		}
 		Info.DialogFree(hDlg);

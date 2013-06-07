@@ -8,39 +8,31 @@ command=
 <uid>B076F0B0-90AE-408c-AD09-491606F09435</uid>
 <uid>65642111-AA69-4B84-B4B8-9249579EC4FA</uid>
 </uids>
-<far>
-<version major="3" minor="0" build="2927" />
-</far>
-<date>
+<version far_major="3" far_minor="0" far_build="2927" />
 <period from="2013-01-01" to="2013-04-28" />
-</date>
 </plugring>
 */
 	wchar_t HeaderHome[]=L"command=<plugring><command code=\"getinfo\"/>",
 					HeaderEnd[]=L"</plugring>",
 					HeaderUIDHome[]=L"<uids>",
 					HeaderUIDEnd[]=L"</uids>",
-					HeaderFar[]=L"<far><version major=\"3\" minor=\"0\" build=\"2927\" /></far>",
-					HeaderFarEmpty[]=L"<far></far>",
-					HeaderDateHome[]=L"<date>",
-					HeaderDateEnd[]=L"</date>";
+					HeaderFar[]=L"<version far_major=\"3\" far_minor=\"0\" far_build=\"2927\" />";
 
 	wchar_t BodyUID[5+36+6+1],
-					BodyDate[44+1];
+					Date[44+1];
 
 	// выделим сразу на всё про всё
 	wchar_t *Str=(wchar_t*)malloc((lstrlen(HeaderHome)+lstrlen(HeaderEnd)+
 																	lstrlen(HeaderUIDHome)+lstrlen(HeaderUIDEnd)+
 																	lstrlen(HeaderFar)+
-																	lstrlen(HeaderDateHome)+lstrlen(HeaderDateHome)+
 																	ipc.CountModules*ARRAYSIZE(BodyUID)+
-																	ARRAYSIZE(BodyDate)+1)*sizeof(wchar_t));
+																	ARRAYSIZE(Date)+1)*sizeof(wchar_t));
 	if (Str)
 	{
 		lstrcpy(Str,HeaderHome);
-		lstrcat(Str,HeaderUIDHome);
 		if (!opt.GetNew)
 		{
+			lstrcat(Str,HeaderUIDHome);
 			for (size_t i=0; i<ipc.CountModules; i++)
 			{
 				if (ipc.Modules[i].Guid!=NULLGuid && !IsStdPlug(ipc.Modules[i].Guid))
@@ -50,19 +42,14 @@ command=
 					lstrcat(Str,BodyUID);
 				}
 			}
+			lstrcat(Str,HeaderUIDEnd);
 		}
-		lstrcat(Str,HeaderUIDEnd);
-
-		if (!opt.GetNew) lstrcat(Str,HeaderFarEmpty);
-		else lstrcat(Str,HeaderFar);
-
-		lstrcat(Str,HeaderDateHome);
-		if (opt.GetNew)
+		else
 		{
-			FSF.sprintf(BodyDate,L"<period from=\"%s\" to=\"%s\" />",opt.DateFrom,opt.DateTo);
-			lstrcat(Str,BodyDate);
+			lstrcat(Str,HeaderFar);
+			FSF.sprintf(Date,L"<period from=\"%s\" to=\"%s\" />",opt.DateFrom,opt.DateTo);
+			lstrcat(Str,Date);
 		}
-		lstrcat(Str,HeaderDateEnd);
 		lstrcat(Str,HeaderEnd);
 
 		size_t Size=WideCharToMultiByte(CP_UTF8,0,Str,lstrlen(Str),nullptr,0,nullptr,nullptr)+1;
