@@ -19,7 +19,9 @@ FILEFLAGS VS_FF_PRERELEASE
  {
   BLOCK L"000004E4"
   {
-   VALUE L"FileDescription",L"Right Click Menu Activator for Far Manager " FARVER
+   VALUE "CompanyName", "WARPED World"
+   VALUE "LegalCopyright", "Copyright (C) 2003 WARP ItSelf, 2013 Alexey Samlyukov"
+   VALUE L"FileDescription",L"rcl2apps for Far Manager " FARVER
    VALUE L"FileVersion",ALLSTR
    VALUE L"ProductVersion",ALLSTR
    VALUE L"InternalName",L"rcl2apps"

@@ -1,48 +1,70 @@
 
-              Right Click Menu Activator v2.0 от 12.06.2013
+              Right Click Menu Activator v2.0 юЄ 12.06.2013
              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                  http://code.google.com/p/farplug-alvls/
 
-  Плагин для вызова плагина EMenu (RightClick) этим самым правым кликом.
-Легко приспосабливается для запуска любого плагина, вызов которого можно
-связать с нажатием хоткея. Принцип действия - подмена нажатия правой
-кнопки мыши на 2 нажатия левой + нажатие Applications key (APPS - клавиша,
-вызывающая контекстное меню виндовых программ).
+  ╨рёяЁюёЄЁрэ хЄё  яюф Єющ цх ышЎхэчшхщ, ўЄю ш ёрь Far Manager, Є.х.:
 
-Установка и настройка
+Copyright (c) 2003 WARP ItSelf, 2013 Alexey Samlyukov
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The name of the authors may not be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+  ╧ырушэ фы  т√чютр яырушэр EMenu (RightClick) ¤Єшь ёрь√ь яЁрт√ь ъышъюь.
+╦хуъю яЁшёяюёрсыштрхЄё  фы  чряєёър ы■сюую яырушэр, т√чют ъюЄюЁюую ьюцэю
+ёт чрЄ№ ё эрцрЄшхь їюЄъх . ╧ЁшэЎшя фхщёЄтш  - яюфьхэр эрцрЄш  яЁртющ
+ъэюяъш ь√°ш эр 2 эрцрЄш  ыхтющ + эрцрЄшх Applications key (APPS - ъыртш°р,
+т√ч√тр■∙р  ъюэЄхъёЄэюх ьхэ■ тшэфют√ї яЁюуЁрьь).
+
+╙ёЄрэютър ш эрёЄЁющър
 ~~~~~~~~~~~~~~~~~~~~~
-  Создайте новую папку в "Far\Plugins\", скопируйте в нее RCL2APPS.DLL,
-установите макрос вызова EMenu по кнопке APPS (макрос входит в состав EMenu)
-и перезапустите Far Manager. Для "тонкой" настройки скопируйте в каталог
-плагина файл RCL2APPS.INI и внесите в него необходимые изменения.
+  ╤ючфрщЄх эютє■ яряъє т "Far\Plugins\", ёъюяшЁєщЄх т эхх RCL2APPS.DLL,
+єёЄрэютшЄх ьръЁюё т√чютр EMenu яю ъэюяъх APPS (ьръЁюё тїюфшЄ т ёюёЄрт EMenu)
+ш яхЁхчряєёЄшЄх Far Manager. ─ы  "Єюэъющ" эрёЄЁющъш ёъюяшЁєщЄх т ърЄрыюу
+яырушэр Їрщы RCL2APPS.INI ш тэхёшЄх т эхую эхюсїюфшь√х шчьхэхэш .
 
-Проблемы
+╧Ёюсыхь√
 ~~~~~~~~
 
-  Снимаю с себя всякую ответственность за безобразия, которые будет творить
-сей плагин на вашем компе :).
+  ╤эшьр■ ё ёхс  тё ъє■ юЄтхЄёЄтхээюёЄ№ чр схчюсЁрчш , ъюЄюЁ√х сєфхЄ ЄтюЁшЄ№
+ёхщ яырушэ эр тр°хь ъюьях :).
 
-0) Естественно, перестанет работать выделение файлов на панелях правой
-   мышиной кнопкой (лично я никогда и не пользовался этой возможностью).
-   Переназначить срабатывание плагина на другую кнопку мыши можно через
-   RCL2APPS.INI. При переназначении на среднюю кнопку мыши не забудьте
-   отключить настройку "Настройки интерфейса"->"В панелях средняя кнопка
-   равна Enter" и выключить/удалить сторонние плагины по обработке
-   колеса (если, конечно, они мешают работе rcl2apps, как WWheel).
+0) ┼ёЄхёЄтхээю, яхЁхёЄрэхЄ ЁрсюЄрЄ№ т√фхыхэшх Їрщыют эр ярэхы ї яЁртющ
+   ь√°шэющ ъэюяъющ (ышўэю   эшъюуфр ш эх яюы№чютрыё  ¤Єющ тючьюцэюёЄ№■).
+   ╧хЁхэрчэрўшЄ№ ёЁрсрЄ√трэшх яырушэр эр фЁєує■ ъэюяъє ь√°ш ьюцэю ўхЁхч
+   RCL2APPS.INI.
 
-1) Плагин не до конца поддерживает возможность динамической выгрузки
-   (осуществляется плагинами BetaTest и The Underscore). В связи с этим
-   не рекомендуется динамически выгружать/останавливать данный плагин.
+1) ╧ырушэ эх фю ъюэЎр яюффхЁцштрхЄ тючьюцэюёЄ№ фшэрьшўхёъющ т√уЁєчъш
+   (юёє∙хёЄты хЄё  яырушэрьш BetaTest ш The Underscore). ┬ ёт чш ё ¤Єшь
+   эх ЁхъюьхэфєхЄё  фшэрьшўхёъш т√уЁєцрЄ№/юёЄрэртыштрЄ№ фрээ√щ яырушэ.
 
-2) При установке данного плагина вы не сможете воспользоваться возможностью
-   плагина MacroView 2.1 rc 9 по перехвату клавиш Ctrl-. в диалоге создания/
-   редактирования макропоследовательности. Эта проблема решена в MacroView 2.4
-
-Благодарности
+┴ыруюфрЁэюёЄш
 ~~~~~~~~~~~~~
 
-Eugene Roshal & Far Group - за лучший в мире файловый менеджер.
+Eugene Roshal & Far Group - чр ыєў°шщ т ьшЁх Їрщыют√щ ьхэхфцхЁ.
 
-Александр Арефьев - за ранее написанные здесь благодарности мне.
+└ыхъёрэфЁ └ЁхЇ№хт - чр Ёрэхх эряшёрээ√х чфхё№ сыруюфрЁэюёЄш ьэх.
 
                                   I'm WARPing Your Mind! [WARP ItSelf]
 

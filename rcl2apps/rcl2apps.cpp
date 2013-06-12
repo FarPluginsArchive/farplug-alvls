@@ -121,9 +121,9 @@ bool CheckPanel(COORD Pos, PanelInfo* pInfo)
 		(Pos.X < pInfo->PanelRect.right) &&
 		(Pos.Y >= pInfo->PanelRect.top+Top) &&
 		(Pos.Y <= pInfo->PanelRect.bottom-Bottom) &&
-		(pInfo->Flags&PFLAGS_VISIBLE) )
+		((pInfo->Flags&PFLAGS_VISIBLE)==PFLAGS_VISIBLE) )
 	{
-		if ( !(pInfo->Flags&PFLAGS_PLUGIN) || ((pInfo->Flags&PFLAGS_REALNAMES) == PFLAGS_REALNAMES) )
+		if ( ((pInfo->Flags&PFLAGS_PLUGIN)!=PFLAGS_PLUGIN) || ((pInfo->Flags&PFLAGS_REALNAMES) == PFLAGS_REALNAMES) )
 			return true;
 	}
 	return false;
@@ -140,7 +140,7 @@ bool IsPanel(COORD Pos)
 		if (Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&pnInfo) && CheckPanel(Pos, &pnInfo))
 			return true;
 
-		if (Info.PanelControl(PANEL_PASSIVE,FCTL_GETPANELINFO,0,&pnInfo) && CheckPanel(Pos, &pnOtherInfo))
+		if (Info.PanelControl(PANEL_PASSIVE,FCTL_GETPANELINFO,0,&pnOtherInfo) && CheckPanel(Pos, &pnOtherInfo))
 			return true;
 	}
 	return false;
