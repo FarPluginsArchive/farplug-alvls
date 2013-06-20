@@ -7,8 +7,9 @@ bool ShowSendModulesDialog(ModuleInfo *pInfo)
 		GuidToStr(pInfo->Guid,Guid);
 		bUnknown=false;
 	}
-	wchar_t FullFile[MAX_PATH]=L"";
 
+	wchar_t FullFile[MAX_PATH]=L"";
+/*
 	struct PanelInfo PInfo={sizeof(PanelInfo)};
 	if (Info.PanelControl(PANEL_ACTIVE,FCTL_GETPANELINFO,0,&PInfo))
 	{
@@ -48,7 +49,7 @@ bool ShowSendModulesDialog(ModuleInfo *pInfo)
 			}
 		}
 	}
-
+*/
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
 		/* 0*/{DI_DOUBLEBOX,  0, 0,80,14, 0, 0, 0,     0,bUnknown?MSG(MSendUnknown):pInfo->Title,0,0},
