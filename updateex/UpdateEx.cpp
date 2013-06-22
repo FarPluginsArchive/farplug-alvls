@@ -42,6 +42,7 @@ enum MODULEINFOFLAG {
 	INFO     = 0x020,  // загрузили в базу инфо об обновлении
 	ARC      = 0x040,  // загрузили архив для обновления
 	NEW      = 0x080,  // новый, еще не установлен
+	ACTIVE   = 0x100,  // активный (загружен в память)
 };
 
 struct ModuleInfo
@@ -629,6 +630,7 @@ DWORD GetInstallModulesInfo()
 					Info.PluginsControl(Plugins[j++],PCTL_GETPLUGININFORMATION,size,FGPInfo);
 					ipc.Modules[i].Guid=FGPInfo->GInfo->Guid;
 					if (FGPInfo->Flags&FPF_ANSI) ipc.Modules[i].Flags|=ANSI;
+					if (GetModuleHandle(FSF.PointToName(FGPInfo->ModuleName))) ipc.Modules[i].Flags|=ACTIVE;
 					if (IsStdPlug(FGPInfo->GInfo->Guid)) ipc.Modules[i].Flags|=STD;
 					VersionInfo CurFarVer={0,0,0,0};
 					Info.AdvControl(&MainGuid,ACTL_GETFARMANAGERVERSION,0,&CurFarVer);
@@ -1053,12 +1055,12 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
 	else if (!opt.ShowDate)
 		FSF.sprintf(Buf,L"%c%c%-22.22s%c%-14.14s%c%c%c%-14.14s%c%10.10s%c%7.7s",
-										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
+										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&ACTIVE?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
 										Ver,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',NewVer,opt.ShowDraw?0x2502:L' ',
 										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
 	else
 		FSF.sprintf(Buf,L"%c%c%-15.15s%c%-12.12s%c%10.10s%c%c%c%-12.12s%c%10.10s%c%7.7s",
-										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&STD?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
+										Cur->Flags&ANSI?L'A':L' ',Cur->Flags&ACTIVE?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
 										Ver,opt.ShowDraw?0x2502:L' ',Cur->Date,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',
 										NewVer,opt.ShowDraw?0x2502:L' ',(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
 	Item.Text=Buf;
