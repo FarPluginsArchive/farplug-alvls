@@ -772,9 +772,23 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 					CountUpdModules++;
 					Ret=S_UPDATE;
 				}
+				// плагины
+				for (size_t i=1; i<ipc.CountModules; i++)
+				{
+					if (ipc.Modules[i].Flags&STD)
+					{
+						lstrcpy(ipc.Modules[i].NewDate,ipc.Modules[0].NewDate);
+//						lstrcpy(ipc.Modules[i].ArcName,ipc.Modules[0].ArcName);
+						if (!(ipc.Modules[0].Flags&UPD))
+						{
+							ipc.Modules[i].Flags|=INFO;
+							ipc.Modules[i].NewVersion=ipc.Modules[i].Version;
+						}
+					}
+				}
 			}
 		}
-		if (Ret!=S_UPTODATE && Ret!=S_UPDATE)
+		else
 			Ret=S_CANTGETFARUPDINFO;
 	}
 /**
@@ -1052,17 +1066,17 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	if (opt.GetNew)
 		FSF.sprintf(Buf,L"%s%-35.35s%c%c%c%-14.14s%c%10.10s%c%7.7s",L"  ",Cur->Title,opt.ShowDraw?0x2502:L' ',
 										Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',NewVer,opt.ShowDraw?0x2502:L' ',
-										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
+										Cur->NewDate,opt.ShowDraw?0x2502:L' ',Status);
 	else if (!opt.ShowDate)
 		FSF.sprintf(Buf,L"%c%c%-22.22s%c%-14.14s%c%c%c%-14.14s%c%10.10s%c%7.7s",
 										Cur->Flags&STD?L'S':(Cur->Flags&ANSI?L'A':L' '),Cur->Flags&ACTIVE?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
 										Ver,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',NewVer,opt.ShowDraw?0x2502:L' ',
-										(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
+										Cur->NewDate,opt.ShowDraw?0x2502:L' ',Status);
 	else
 		FSF.sprintf(Buf,L"%c%c%-15.15s%c%-12.12s%c%10.10s%c%c%c%-12.12s%c%10.10s%c%7.7s",
 										Cur->Flags&STD?L'S':(Cur->Flags&ANSI?L'A':L' '),Cur->Flags&ACTIVE?0x2022:L' ',Cur->Title,opt.ShowDraw?0x2502:L' ',
 										Ver,opt.ShowDraw?0x2502:L' ',Cur->Date,opt.ShowDraw?0x2502:L' ',Cur->Flags&UPD?0x2192:L' ',opt.ShowDraw?0x2502:L' ',
-										NewVer,opt.ShowDraw?0x2502:L' ',(Cur->Flags&INFO)?Cur->NewDate:L"",opt.ShowDraw?0x2502:L' ',Status);
+										NewVer,opt.ShowDraw?0x2502:L' ',Cur->NewDate,opt.ShowDraw?0x2502:L' ',Status);
 	Item.Text=Buf;
 }
 
@@ -1167,7 +1181,7 @@ bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 		ModuleInfo *Cur=&ipc.Modules[i];
 		if (opt.GetNew && !(Cur->Flags&NEW))
 			continue;
-		if ((GetStatus()!=S_COMPLET&&(Cur->Flags&INFO))||(GetStatus()==S_COMPLET&&(Cur->Flags&ARC))||opt.ShowDisable)
+		if ((GetStatus()!=S_COMPLET&&((Cur->Flags&INFO)&&!(Cur->Flags&STD)))||(GetStatus()==S_COMPLET&&(Cur->Flags&ARC))||opt.ShowDisable)
 		{
 			wchar_t Buf[MAX_PATH];
 			struct FarListItem Item={};
