@@ -30,7 +30,7 @@ command=
 	if (Str)
 	{
 		lstrcpy(Str,HeaderHome);
-		if (!opt.GetNew)
+		if (opt.Mode!=MODE_NEW)
 		{
 			lstrcat(Str,HeaderUIDHome);
 			for (size_t i=0; i<ipc.CountModules; i++)
