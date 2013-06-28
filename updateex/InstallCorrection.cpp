@@ -272,3 +272,36 @@ bool InstallCorrection(const wchar_t *ModuleName)
 	}
 	return true;
 }
+
+void Exec(bool bPreInstall, GUID *Guid, wchar_t *Config, wchar_t *CurDirectory)
+{
+	if (GetFileAttributes(Config)==INVALID_FILE_ATTRIBUTES)
+		return;
+
+	wchar_t exec[4096],execExp[8192];
+	wchar_t guid[37]=L"";
+	GetPrivateProfileString((Guid?GuidToStr(*Guid,guid):L"common"),(bPreInstall?L"PreInstall":L"PostInstall"),L"",exec,ARRAYSIZE(exec),Config);
+	if(*exec)
+	{
+		ExpandEnvironmentStrings(exec,execExp,ARRAYSIZE(execExp));
+		STARTUPINFO si={sizeof(si)};
+		PROCESS_INFORMATION pi;
+		{
+			TextColor color(FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_INTENSITY);
+			mprintf(L"\nExecuting %-50.50s",execExp);
+		}
+		if(CreateProcess(nullptr,execExp,nullptr,nullptr,TRUE,0,nullptr,CurDirectory,&si,&pi))
+		{
+			TextColor color(FOREGROUND_GREEN|FOREGROUND_INTENSITY);
+			mprintf(L"OK\n");
+			WaitForSingleObject(pi.hProcess,INFINITE);
+		}
+		else
+		{
+			TextColor color(FOREGROUND_RED|FOREGROUND_INTENSITY);
+			mprintf(L"Error %d\n",GetLastError());
+		}
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+	}
+}

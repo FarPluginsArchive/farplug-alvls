@@ -30,7 +30,7 @@ command=
 	if (Str)
 	{
 		lstrcpy(Str,HeaderHome);
-		if (opt.Mode!=MODE_NEW)
+		if (ipc.opt.Mode!=MODE_NEW)
 		{
 			lstrcat(Str,HeaderUIDHome);
 			for (size_t i=0; i<ipc.CountModules; i++)
@@ -47,7 +47,7 @@ command=
 		else
 		{
 			lstrcat(Str,HeaderFar);
-			FSF.sprintf(Date,L"<period from=\"%s\" to=\"%s\" />",opt.DateFrom,opt.DateTo);
+			FSF.sprintf(Date,L"<period from=\"%s\" to=\"%s\" />",ipc.opt.DateFrom,ipc.opt.DateTo);
 			lstrcat(Str,Date);
 		}
 		lstrcat(Str,HeaderEnd);
@@ -77,27 +77,27 @@ DWORD WINAPI WinInetDownloadEx(LPCWSTR strSrv, LPCWSTR strURL, LPCWSTR strFile, 
 	DWORD err=0;
 
 	DWORD ProxyType=INTERNET_OPEN_TYPE_DIRECT;
-	if(opt.Proxy)
-		ProxyType=*opt.ProxyName?INTERNET_OPEN_TYPE_PROXY:INTERNET_OPEN_TYPE_PRECONFIG;
+	if(ipc.opt.Proxy)
+		ProxyType=*ipc.opt.ProxyName?INTERNET_OPEN_TYPE_PROXY:INTERNET_OPEN_TYPE_PRECONFIG;
 
-	HINTERNET hInternet=InternetOpen(L"Mozilla/5.0 (compatible; FAR UpdateEx)",ProxyType,opt.ProxyName,nullptr,0);
+	HINTERNET hInternet=InternetOpen(L"Mozilla/5.0 (compatible; FAR UpdateEx)",ProxyType,ipc.opt.ProxyName,nullptr,0);
 	if(hInternet)
 	{
 		HINTERNET hConnect=InternetConnect(hInternet,strSrv,INTERNET_DEFAULT_HTTP_PORT,nullptr,nullptr,INTERNET_SERVICE_HTTP,0,0);
 		if(hConnect)
 		{
-			if(opt.Proxy && *opt.ProxyName)
+			if(ipc.opt.Proxy && *ipc.opt.ProxyName)
 			{
-				if(*opt.ProxyUser)
+				if(*ipc.opt.ProxyUser)
 				{
-					if (!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_USERNAME,(LPVOID)opt.ProxyUser,lstrlen(opt.ProxyUser)))
+					if (!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_USERNAME,(LPVOID)ipc.opt.ProxyUser,lstrlen(ipc.opt.ProxyUser)))
 					{
 						err=GetLastError();
 					}
 				}
-				if (*opt.ProxyPass)
+				if (*ipc.opt.ProxyPass)
 				{
-					if(!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_PASSWORD,(LPVOID)opt.ProxyPass,lstrlen(opt.ProxyPass)))
+					if(!InternetSetOption(hConnect,INTERNET_OPTION_PROXY_PASSWORD,(LPVOID)ipc.opt.ProxyPass,lstrlen(ipc.opt.ProxyPass)))
 					{
 						err=GetLastError();
 					}

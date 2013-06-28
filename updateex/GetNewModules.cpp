@@ -12,7 +12,7 @@ void SetPeriod(HANDLE hDlg,int Period)
 	wchar_t Buf[11];
 	SYSTEMTIME st;
 	GetLocalTime(&st);
-	if (opt.Date)
+	if (ipc.opt.Date)
 		FSF.sprintf(Buf,L"%04d-%02d-%02d",st.wYear,st.wMonth,st.wDay);
 	else
 		FSF.sprintf(Buf,L"%02d-%02d-%04d",st.wDay,st.wMonth,st.wYear);
@@ -28,7 +28,7 @@ void SetPeriod(HANDLE hDlg,int Period)
 	ft.dwLowDateTime=ut_out.LowPart;
 	ft.dwHighDateTime=ut_out.HighPart;
 	FileTimeToSystemTime(&ft,&st);
-	if (opt.Date)
+	if (ipc.opt.Date)
 		FSF.sprintf(Buf,L"%04d-%02d-%02d",st.wYear,st.wMonth,st.wDay);
 	else
 		FSF.sprintf(Buf,L"%02d-%02d-%04d",st.wDay,st.wMonth,st.wYear);
@@ -93,17 +93,17 @@ intptr_t WINAPI GetNewModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1
 		case DN_CLOSE:
 			if (Param1==6)
 			{
-				if (opt.Date)
+				if (ipc.opt.Date)
 				{
-					lstrcpy(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
-					lstrcpy(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
+					lstrcpy(ipc.opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+					lstrcpy(ipc.opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
 				}
 				else
 				{
-					CopyReverseTime2(opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
-					CopyReverseTime2(opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
+					CopyReverseTime2(ipc.opt.DateFrom,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,2,0));
+					CopyReverseTime2(ipc.opt.DateTo,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,4,0));
 				}
-				if (CheckDate(opt.DateFrom) && CheckDate(opt.DateTo) && FSF.LStricmp(opt.DateFrom,opt.DateTo)<=0)
+				if (CheckDate(ipc.opt.DateFrom) && CheckDate(ipc.opt.DateTo) && FSF.LStricmp(ipc.opt.DateFrom,ipc.opt.DateTo)<=0)
 					return true;
 				else
 				{
@@ -119,7 +119,7 @@ intptr_t WINAPI GetNewModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1
 
 bool GetNewModulesDialog()
 {
-	const wchar_t *mask=opt.Date?L"9999-99-99":L"99-99-9999";
+	const wchar_t *mask=ipc.opt.Date?L"9999-99-99":L"99-99-9999";
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
 		/* 0*/{DI_DOUBLEBOX,  3, 1,54, 5, 0, 0, 0,                           0, MSG(MNewModules),0,0},
