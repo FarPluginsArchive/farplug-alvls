@@ -214,10 +214,10 @@ template<class T>T StringToNumber(LPCWSTR String, T &Number)
 
 bool Clean()
 {
-	DeleteFile(PluginModule);
-	RemoveDirectory(ipc.TempDirectory);
 	if (!ipc.opt.SavePlugAfterInstall && !ipc.opt.SaveFarAfterInstall)
 		DeleteFile(ipc.Cache);
+	DeleteFile(PluginModule);
+	RemoveDirectory(ipc.TempDirectory);
 	return true;
 }
 
