@@ -226,7 +226,7 @@ bool IsTime()
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 	EnterCriticalSection(&cs);
-	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay||(st.wHour-SavedTime.wHour)>=6;
+	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay||(st.wHour-SavedTime.wHour)>=3;
 	LeaveCriticalSection(&cs);
 	return Result;
 }
