@@ -216,6 +216,8 @@ bool Clean()
 {
 	DeleteFile(PluginModule);
 	RemoveDirectory(ipc.TempDirectory);
+	if (!ipc.opt.SavePlugAfterInstall && !ipc.opt.SaveFarAfterInstall)
+		DeleteFile(ipc.Cache);
 	return true;
 }
 
