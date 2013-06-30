@@ -60,7 +60,7 @@ struct ModuleInfo
 	wchar_t Author[MAX_PATH];
 	wchar_t ModuleName[MAX_PATH];
 	wchar_t Date[11];
-
+	wchar_t Changelog[2048];
 	wchar_t fid[64];  // file ID
 	wchar_t Downloads[64]; // количество скачиваний
 	struct Data
@@ -314,7 +314,7 @@ struct STDPLUG
 {
 	size_t i;
 	const GUID *Guid;
-	wchar_t *Log;
+	wchar_t *Changelog;
 } StdPlug[]= {
 	{0, &FarGuid,        L"http://www.farmanager.com/svn/trunk/unicode_far/changelog"},
 	{1, &AlignGuid,      L"align"},
@@ -373,6 +373,44 @@ bool CmpListGuid(wchar_t *ListGuid,GUID &Guid)
 		}
 	}
 	return ret;
+}
+
+wchar_t *ReplaseSymbol(wchar_t *Str)
+{
+	if (Str)
+	{
+		int lenStr=lstrlen(Str);
+		wchar_t *Buf=(wchar_t*)malloc((lenStr+1)*sizeof(wchar_t));
+		if (Buf)
+		{
+			int i=0,j=0;
+			// делаем замену символов
+			for ( ; i<lenStr; )
+			{
+				if (!FSF.LStrnicmp(Str+i,L"&amp;",5))
+				{
+					Buf[i++]=Str[j];
+					j+=5;
+				}
+				else if (!FSF.LStrnicmp(Str+i,L"&apos;",6))
+				{
+					Buf[i++]=L'\'';
+					j+=6;
+				}
+				else if (!FSF.LStrnicmp(Str+i,L"&quot;",6))
+				{
+					Buf[i++]=L'\"';
+					j+=6;
+				}
+				else
+					Buf[i++]=Str[j++];
+			}
+			Buf[i]=0;
+			lstrcpy(Str,Buf);
+			free(Buf);
+		}
+	}
+	return Str;
 }
 
 wchar_t *CharToWChar(const char *str)
@@ -771,6 +809,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 			// если получили имя архива и версия новее...
 			if (ipc.Modules[0].New.ArcName[0])
 			{
+				lstrcpy(ipc.Modules[0].Changelog,StdPlug[0].Changelog);
 				ipc.Modules[0].Flags|=INFO;
 
 				if (CmpListGuid(ListGuid,(GUID&)FarGuid))
@@ -794,6 +833,22 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 						}
 						else
 							lstrcpy(ipc.Modules[i].New.Date,ipc.Modules[0].New.Date);
+						// заполним лог
+						for (size_t j=1; j<=17; j++)
+						{
+							if (*StdPlug[j].Guid==ipc.Modules[i].Guid)
+							{
+								if (j<16)
+								{
+									wchar_t url[512]=L"http://www.farmanager.com/svn/trunk/plugins/";
+									lstrcat(url,StdPlug[j].Changelog);
+									lstrcat(url,L"/changelog");
+									lstrcpy(ipc.Modules[i].Changelog,url);
+								}
+								else
+									lstrcpy(ipc.Modules[i].Changelog,StdPlug[j].Changelog);
+							}
+						}
 					}
 				}
 			}
@@ -842,7 +897,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 						wchar_t *Buf=CharToWChar(plug->Attribute("uid"));
 						if (Buf)
 						{
-							if (StrToGuid(Buf,plugGUID))
+							if (StrToGuid(Buf,plugGUID) && !IsStdPlug(plugGUID))
 							{
 								for (size_t i=1; i<ipc.CountModules; i++)
 								{
@@ -883,6 +938,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 								if (Buf)
 								{
 									lstrcpyn(CurInfo->Description,Buf,2048);
+									ReplaseSymbol(CurInfo->Description);
 									free(Buf); Buf=nullptr;
 								}
 							}
@@ -891,6 +947,17 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 							if (Buf)
 							{
 								lstrcpy(CurInfo->pid,Buf);
+								free(Buf); Buf=nullptr;
+							}
+							Buf=CharToWChar(plug->Attribute("forum_url"));
+							if (Buf)
+							{
+								if (Buf[0])
+								{
+									lstrcpyn(CurInfo->Changelog,Buf,2048);
+									if (StrStr(CurInfo->Changelog,L"forum.farmanager.com"))
+										lstrcat(CurInfo->Changelog,L"&start=100000"); // хинт ушами для перехода в конец топика форума :)
+								}
 								free(Buf); Buf=nullptr;
 							}
 							if (const TiXmlElement *filesElem=plug->FirstChildElement("files"))
@@ -1465,10 +1532,10 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			const INPUT_RECORD* record=(const INPUT_RECORD *)Param2;
 			if (record->EventType==MOUSE_EVENT)
 			{
-				if (Param1==DlgLIST && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+				if (Param1==DlgLIST && record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_CTRLH;
-				else if (Param1==DlgINFO && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+				else if (Param1==DlgLIST && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_F2;
 				else if ((Param1==DlgDESC || ipc.opt.Mode==MODE_NEW&&Param1==DlgAUTHOR) && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
@@ -1554,24 +1621,10 @@ GOTO_F2:
 							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
 							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
 							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-							if (Cur)
+							if (Cur && Cur->Changelog[0])
 							{
-								for (size_t i=0; i<=17; i++)
-								{
-									if (*StdPlug[i].Guid==Cur->Guid && i && i<16)
-									{
-										wchar_t url[512]=L"http://www.farmanager.com/svn/trunk/plugins/";
-										lstrcat(url,StdPlug[i].Log);
-										lstrcat(url,L"/changelog");
-										ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
-										return true;
-									}
-									else if (*StdPlug[i].Guid==Cur->Guid && (i==0 || i>=16))
-									{
-										ShellExecute(nullptr,L"open",StdPlug[i].Log,nullptr,nullptr,SW_SHOWNORMAL);
-										return true;
-									}
-								}
+								ShellExecute(nullptr,L"open",Cur->Changelog,nullptr,nullptr,SW_SHOWNORMAL);
+								return true;
 							}
 							MessageBeep(MB_OK);
 							return true;
