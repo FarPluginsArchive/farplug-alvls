@@ -1,0 +1,128 @@
+ MacroDecrypt
+
+ Timestamp is 482e6095 (Sat May 17 11:35:33 2008)
+
+ Preferred load address is 00400000
+
+ Start         Length     Name                   Class
+ 0001:00000000 00000064H .idata$5                CODE
+ 0001:00000068 0000021cH .rdata                  CODE
+ 0001:00000290 0000087cH .text                   CODE
+ 0001:00000b0c 00000014H .idata$2                CODE
+ 0001:00000b20 00000014H .idata$3                CODE
+ 0001:00000b34 00000064H .idata$4                CODE
+ 0001:00000b98 00000132H .idata$6                CODE
+ 0001:00000cca 00000000H .edata                  CODE
+ 0002:00000000 00000004H .CRT$XCA                DATA
+ 0002:00000004 00000004H .CRT$XCZ                DATA
+ 0002:00000008 00000004H .CRT$XIA                DATA
+ 0002:0000000c 00000004H .CRT$XIZ                DATA
+ 0002:00000010 00000010H .data                   DATA
+ 0002:00000020 0000001cH .bss                    DATA
+
+  Address         Publics by Value              Rva+Base     Lib:Object
+
+ 0000:00000000       ___safe_se_handler_count   00000000     <absolute>
+ 0000:00000000       __except_list              00000000     <absolute>
+ 0000:00000000       ___safe_se_handler_table   00000000     <absolute>
+ 0000:00009876       __ldused                   00009876     <absolute>
+ 0000:00009876       __fltused                  00009876     <absolute>
+ 0001:00000000       __imp__printf              00401000     msvcrt60:MSVCRT.dll
+ 0001:00000004       __imp__sscanf              00401004     msvcrt60:MSVCRT.dll
+ 0001:00000008       __imp__strncpy             00401008     msvcrt60:MSVCRT.dll
+ 0001:0000000c       __imp__free                0040100c     msvcrt60:MSVCRT.dll
+ 0001:00000010       __imp___strnicmp           00401010     msvcrt60:MSVCRT.dll
+ 0001:00000014       __imp__fclose              00401014     msvcrt60:MSVCRT.dll
+ 0001:00000018       __imp__fread               00401018     msvcrt60:MSVCRT.dll
+ 0001:0000001c       __imp__malloc              0040101c     msvcrt60:MSVCRT.dll
+ 0001:00000020       __imp__ftell               00401020     msvcrt60:MSVCRT.dll
+ 0001:00000024       __imp__fseek               00401024     msvcrt60:MSVCRT.dll
+ 0001:00000028       __imp__fopen               00401028     msvcrt60:MSVCRT.dll
+ 0001:0000002c       __imp___exit               0040102c     msvcrt60:MSVCRT.dll
+ 0001:00000030       __imp___XcptFilter         00401030     msvcrt60:MSVCRT.dll
+ 0001:00000034       __imp__exit                00401034     msvcrt60:MSVCRT.dll
+ 0001:00000038       __imp____p___initenv       00401038     msvcrt60:MSVCRT.dll
+ 0001:0000003c       __imp____getmainargs       0040103c     msvcrt60:MSVCRT.dll
+ 0001:00000040       __imp___initterm           00401040     msvcrt60:MSVCRT.dll
+ 0001:00000044       __imp____setusermatherr    00401044     msvcrt60:MSVCRT.dll
+ 0001:00000048       __imp___adjust_fdiv        00401048     msvcrt60:MSVCRT.dll
+ 0001:0000004c       __imp____p__commode        0040104c     msvcrt60:MSVCRT.dll
+ 0001:00000050       __imp____p__fmode          00401050     msvcrt60:MSVCRT.dll
+ 0001:00000054       __imp____set_app_type      00401054     msvcrt60:MSVCRT.dll
+ 0001:00000058       __imp___except_handler3    00401058     msvcrt60:MSVCRT.dll
+ 0001:0000005c       __imp___controlfp          0040105c     msvcrt60:MSVCRT.dll
+ 0001:00000060       \177MSVCRT_NULL_THUNK_DATA 00401060     msvcrt60:MSVCRT.dll
+ 0001:00000068       ??_C@_02HAOIJKIC@?$CFc?$AA@ 00401068     MacroDecrypt.obj
+ 0001:0000006c       ??_C@_01CLKCMJKC@?5?$AA@   0040106c     MacroDecrypt.obj
+ 0001:00000070       ??_C@_0CC@CFELPLDA@?5?5MacroDecrypt?5?9d?5macro_file?4reg@ 00401070     MacroDecrypt.obj
+ 0001:00000094       ??_C@_0L@DLBECOMO@?6Example?3?6?$AA@ 00401094     MacroDecrypt.obj
+ 0001:000000a0       ??_C@_0DJ@IFHCKFOO@?5?5?9m?3?5Convert?5?$CCSequence?$CC?5from?5st@ 004010a0     MacroDecrypt.obj
+ 0001:000000dc       ??_C@_0DJ@LGBHHPBG@?5?5?9e?3?5Encrypt?5macro?5from?5strings@ 004010dc     MacroDecrypt.obj
+ 0001:00000118       ??_C@_0CA@LIBCKHLF@?5?5?9d?3?5Decrypt?5macro?5to?5strings?6?$AA@ 00401118     MacroDecrypt.obj
+ 0001:00000138       ??_C@_0N@GEIFCHCL@?6?$DMcommand?$DO?3?6?$AA@ 00401138     MacroDecrypt.obj
+ 0001:00000148       ??_C@_0DB@GFGBDKLN@?6Usege?3?5MacroDecrypt?5?$DMcommand?$DO?5?$DM@ 00401148     MacroDecrypt.obj
+ 0001:0000017c       ??_C@_0CO@PBNONFEA@?5?5?$CIc?$CJ?5Alex?5Yaroslavsky?0?5?$CIc?$CJ?5Alex@ 0040117c     MacroDecrypt.obj
+ 0001:000001ac       ??_C@_0DA@HHAFHPIO@?5?5MacroDecrypt?52?43?5?5?5?5addition?5f@ 004011ac     MacroDecrypt.obj
+ 0001:000001dc       ??_C@_00CNPNBAHC@?$AA@     004011dc     MacroDecrypt.obj
+ 0001:000001e0       ??_C@_03JBJLGPFL@end?$AA@  004011e0     MacroDecrypt.obj
+ 0001:000001e4       ??_C@_01EEMJAFIK@?6?$AA@   004011e4     MacroDecrypt.obj
+ 0001:000001e8       ??_C@_04FHMCPBIP@else?$AA@ 004011e8     MacroDecrypt.obj
+ 0001:000001f0       ??_C@_05OODBEKIG@while?$AA@ 004011f0     MacroDecrypt.obj
+ 0001:000001f8       ??_C@_03HOKODIMJ@rep?$AA@  004011f8     MacroDecrypt.obj
+ 0001:000001fc       ??_C@_02HEBPBKGD@if?$AA@   004011fc     MacroDecrypt.obj
+ 0001:00000200       ??_C@_05DCPAJNBG@?5$end?$AA@ 00401200     MacroDecrypt.obj
+ 0001:00000208       ??_C@_06FPAMKHFA@?5$else?$AA@ 00401208     MacroDecrypt.obj
+ 0001:00000210       ??_C@_07PIFFELJF@?5$while?$AA@ 00401210     MacroDecrypt.obj
+ 0001:00000218       ??_C@_05NNMFMKIE@?5$rep?$AA@ 00401218     MacroDecrypt.obj
+ 0001:00000220       ??_C@_04KDONCDAB@?5$if?$AA@ 00401220     MacroDecrypt.obj
+ 0001:00000228       ??_C@_02NJNOFBBI@?$CFx?$AA@ 00401228     MacroDecrypt.obj
+ 0001:0000022c       ??_C@_0M@MNOBJNHA@?$CCSequence?$CC?$DN?$AA@ 0040122c     MacroDecrypt.obj
+ 0001:00000238       ??_C@_0BD@GPIKFNCJ@?$CCSequence?$CC?$DNhex?$CI7?$CJ?3?$AA@ 00401238     MacroDecrypt.obj
+ 0001:0000024c       ??_C@_03FPIBHHLF@?$CC?$DN?$CC?$AA@ 0040124c     MacroDecrypt.obj
+ 0001:00000250       ??_C@_03DDMKFGHM@00?0?$AA@ 00401250     MacroDecrypt.obj
+ 0001:00000254       ??_C@_02PLJDPFIO@00?$AA@   00401254     MacroDecrypt.obj
+ 0001:00000258       ??_C@_03CKIECNKJ@?$CFx?0?$AA@ 00401258     MacroDecrypt.obj
+ 0001:0000025c       ??_C@_07CJFEHALN@hex?$CI7?$CJ?3?$AA@ 0040125c     MacroDecrypt.obj
+ 0001:00000264       ??_C@_0N@PHHKNGIB@?$CCSequence?$CC?$DN?$CC?$AA@ 00401264     MacroDecrypt.obj
+ 0001:00000274       ??_C@_01KDCPPGHE@r?$AA@    00401274     MacroDecrypt.obj
+ 0001:00000290       ?my_print@@YIXHPBDH@Z      00401290 f   MacroDecrypt.obj
+ 0001:000002cc       ?help_print@@YIXXZ         004012cc f   MacroDecrypt.obj
+ 0001:00000338       _main                      00401338 f   MacroDecrypt.obj
+ 0001:0000098c       _printf                    0040198c f   msvcrt60:MSVCRT.dll
+ 0001:00000992       _sscanf                    00401992 f   msvcrt60:MSVCRT.dll
+ 0001:00000998       _strncpy                   00401998 f   msvcrt60:MSVCRT.dll
+ 0001:0000099e       _free                      0040199e f   msvcrt60:MSVCRT.dll
+ 0001:000009a4       __strnicmp                 004019a4 f   msvcrt60:MSVCRT.dll
+ 0001:000009aa       _fclose                    004019aa f   msvcrt60:MSVCRT.dll
+ 0001:000009b0       _fread                     004019b0 f   msvcrt60:MSVCRT.dll
+ 0001:000009b6       _malloc                    004019b6 f   msvcrt60:MSVCRT.dll
+ 0001:000009bc       _ftell                     004019bc f   msvcrt60:MSVCRT.dll
+ 0001:000009c2       _fseek                     004019c2 f   msvcrt60:MSVCRT.dll
+ 0001:000009c8       _fopen                     004019c8 f   msvcrt60:MSVCRT.dll
+ 0001:000009ce       _mainCRTStartup            004019ce f   msvcrt60:crtexe.obj
+ 0001:00000ade       __XcptFilter               00401ade f   msvcrt60:MSVCRT.dll
+ 0001:00000ae4       __initterm                 00401ae4 f   msvcrt60:MSVCRT.dll
+ 0001:00000aea       __setdefaultprecision      00401aea f   msvcrt60:fp8.obj
+ 0001:00000afc       __matherr                  00401afc f   msvcrt60:merr.obj
+ 0001:00000aff       __setargv                  00401aff f   msvcrt60:dllargv.obj
+ 0001:00000b00       __except_handler3          00401b00 f   msvcrt60:MSVCRT.dll
+ 0001:00000b06       __controlfp                00401b06 f   msvcrt60:MSVCRT.dll
+ 0001:00000b0c       __IMPORT_DESCRIPTOR_MSVCRT 00401b0c     msvcrt60:MSVCRT.dll
+ 0001:00000b20       __NULL_IMPORT_DESCRIPTOR   00401b20     msvcrt60:MSVCRT.dll
+ 0002:00000000       ___xc_a                    00402000     msvcrt60:cinitexe.obj
+ 0002:00000004       ___xc_z                    00402004     msvcrt60:cinitexe.obj
+ 0002:00000008       ___xi_a                    00402008     msvcrt60:cinitexe.obj
+ 0002:0000000c       ___xi_z                    0040200c     msvcrt60:cinitexe.obj
+ 0002:00000010       ___defaultmatherr          00402010     msvcrt60:merr.obj
+ 0002:00000020       __dowildcard               00402020     msvcrt60:wildcard.obj
+ 0002:00000024       __newmode                  00402024     msvcrt60:_newmode.obj
+ 0002:00000028       __commode                  00402028     msvcrt60:xncommod.obj
+ 0002:0000002c       __fmode                    0040202c     msvcrt60:xtxtmode.obj
+ 0002:00000030       ___onexitend               00402030     <common>
+ 0002:00000034       ___onexitbegin             00402034     <common>
+ 0002:00000038       __adjust_fdiv              00402038     <common>
+
+ entry point at        0001:000009ce
+
+ Static symbols
+

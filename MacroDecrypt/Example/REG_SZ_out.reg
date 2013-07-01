@@ -1,0 +1,6 @@
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\Far\KeyMacros\Shell\CtrlDown]
+"Sequence"="$If ((APanel.SelCount==1) && (panelitem(0,0,8))) $Exit $End %i=APanel.CurPos+1; $While (%i<APanel.ItemCount && !panelitem(0,%i,8)) %i=%i+1; $End $If (%i>=APanel.ItemCount && !panelitem(0,%i,8)) %i=1; $While (%i<APanel.ItemCount && !panelitem(0,%i,8)) %i=%i+1; $End $End panel.setpos(0,panelitem(0,%i,0))"
+"DisableOutput"=dword:00000001
+"Selection"=dword:00000001
