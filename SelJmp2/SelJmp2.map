@@ -1,0 +1,39 @@
+ SelJmp2
+
+ Timestamp is 4a7e899a (Sun Aug 09 15:32:26 2009)
+
+ Preferred load address is 10000000
+
+ Start         Length     Name                   Class
+ 0001:00000000 00000010H .idata$5                CODE
+ 0001:00000010 00000260H .text                   CODE
+ 0001:00000270 00000028H .idata$2                CODE
+ 0001:00000298 00000014H .idata$3                CODE
+ 0001:000002ac 00000010H .idata$4                CODE
+ 0001:000002bc 00000034H .idata$6                CODE
+ 0001:000002f0 00000095H .edata                  CODE
+ 0002:00000000 000003b0H .bss                    DATA
+ 0003:00000000 00000058H .rsrc$01                DATA
+ 0003:00000060 000003d8H .rsrc$02                DATA
+
+  Address         Publics by Value              Rva+Base     Lib:Object
+
+ 0000:00000000       ___safe_se_handler_table   00000000     <absolute>
+ 0000:00000000       ___safe_se_handler_count   00000000     <absolute>
+ 0001:00000000       __imp__lstrcpyA@8          10001000     kernel32:KERNEL32.dll
+ 0001:00000004       \177KERNEL32_NULL_THUNK_DATA 10001004     kernel32:KERNEL32.dll
+ 0001:00000008       __imp__MessageBoxA@16      10001008     user32:USER32.dll
+ 0001:0000000c       \177USER32_NULL_THUNK_DATA 1000100c     user32:USER32.dll
+ 0001:00000010       _GetMinFarVersion@0        10001010 f   SelJmp2.obj
+ 0001:00000016       _SetStartupInfo@4          10001016 f   SelJmp2.obj
+ 0001:0000003c       _GetPluginInfo@4           1000103c f   SelJmp2.obj
+ 0001:00000075       _OpenPlugin@8              10001075 f   SelJmp2.obj
+ 0001:00000270       __IMPORT_DESCRIPTOR_KERNEL32 10001270     kernel32:KERNEL32.dll
+ 0001:00000284       __IMPORT_DESCRIPTOR_USER32 10001284     user32:USER32.dll
+ 0001:00000298       __NULL_IMPORT_DESCRIPTOR   10001298     kernel32:KERNEL32.dll
+ 0002:00000000       ?IsOldFar@@3HA             10002000     SelJmp2.obj
+
+ entry point at        0000:00000000
+
+ Static symbols
+

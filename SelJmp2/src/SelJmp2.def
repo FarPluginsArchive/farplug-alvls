@@ -1,0 +1,6 @@
+LIBRARY    SelJmp2
+EXPORTS
+  GetMinFarVersion
+  SetStartupInfo
+  OpenPlugin
+  GetPluginInfo

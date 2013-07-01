@@ -1,0 +1,23 @@
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\Far\KeyMacros\Shell\CtrlHome]
+"Sequence"="F11 j f"
+"DisableOutput"=dword:00000001
+"Selection"=dword:00000001
+"EmptyCommandLine"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Far\KeyMacros\Shell\CtrlUp]
+"Sequence"="F11 j p"
+"DisableOutput"=dword:00000001
+"Selection"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Far\KeyMacros\Shell\CtrlDown]
+"Sequence"="F11 j n"
+"DisableOutput"=dword:00000001
+"Selection"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Far\KeyMacros\Shell\CtrlEnd]
+"Sequence"="F11 j l"
+"DisableOutput"=dword:00000001
+"Selection"=dword:00000001
+"EmptyCommandLine"=dword:00000001

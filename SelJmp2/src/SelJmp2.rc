@@ -1,0 +1,31 @@
+#define VERSIONINFO_1   1                                 
+                                                          
+VERSIONINFO_1  VERSIONINFO                                
+FILEVERSION    1,70,0,12                              
+PRODUCTVERSION 1,70,0,0                                   
+FILEFLAGSMASK  0x0                                        
+FILEFLAGS      0x0                                        
+FILEOS         0x4                                        
+FILETYPE       0x2                                        
+FILESUBTYPE    0x0                                        
+{                                                         
+  BLOCK "StringFileInfo"                                  
+  {                                                       
+    BLOCK "000004E4"                                      
+    {                                                     
+      VALUE "CompanyName",      "Eugene Roshal & FAR Group\0"         
+      VALUE "FileDescription",  "Selection Jump plugin for FAR Manager\0"     
+      VALUE "FileVersion",      "1.70 build 12\0"     
+      VALUE "InternalName",     "SelJmp2\0"            
+      VALUE "LegalCopyright",   "Copyright © Vladimir Tarasov 1999, Copyright © Wesha the Leopard 2003\0"      
+      VALUE "OriginalFilename", "SelJmp2.dll\0"        
+      VALUE "ProductName",      "FAR Manager\0"           
+      VALUE "ProductVersion",   "1.70\0"                  
+      VALUE "Comments",         "Current developer: samlyukov<at>gmail.com\0"            
+    }                                                     
+  }                                                       
+  BLOCK "VarFileInfo"                                     
+  {                                                       
+    VALUE "Translation", 0, 0x4e4                         
+  }                                                       
+}                                                         
