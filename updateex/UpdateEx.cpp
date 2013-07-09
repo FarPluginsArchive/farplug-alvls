@@ -155,7 +155,8 @@ struct EventStruct
 bool NeedRestart=false;
 bool ExitFAR=false;
 DWORD Status=S_NONE;
-size_t CountUpdModules;
+size_t CountUpdate=0;
+size_t CountDownload=0;
 
 wchar_t PluginModule[MAX_PATH];
 
@@ -767,7 +768,7 @@ void GetUpdModulesInfo()
 		return;
 	}
 	Ret=S_UPTODATE;
-	CountUpdModules=0;
+	CountUpdate=CountDownload=0;
 
 	wchar_t *ListGuid=nullptr;
 	PluginSettings settings(MainGuid, Info.SettingsControl);
@@ -817,7 +818,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 				else if (NeedUpdate(ipc.Modules[0].Version,ipc.Modules[0].New.Version) || FSF.LStricmp(ipc.Modules[0].Date,ipc.Modules[0].New.Date)<0)
 				{
 					ipc.Modules[0].Flags|=UPD;
-					CountUpdModules++;
+					CountUpdate++;
 					Ret=S_UPDATE;
 				}
 				// плагины
@@ -1074,7 +1075,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 														else if (!(CurInfo->Flags&NEW) && NeedUpdate(CurInfo->Version,CurInfo->New.Version))
 														{
 															CurInfo->Flags|=UPD;
-															CountUpdModules++;
+															CountUpdate++;
 															Ret=S_UPDATE;
 														}
 													}
@@ -1126,7 +1127,7 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	if (Cur->Flags&UPD)
 	{
 		Item.Flags|=(LIF_CHECKED|0x2b);
-		CountUpdModules++;
+//	CountUpdate++;
 	}
 	else if (Cur->Flags&SKIP)
 		Item.Flags|=(LIF_CHECKED|0x2d);
@@ -1259,7 +1260,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 
 bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 {
-	CountUpdModules=0;
+//	CountUpdate=0;
 	struct FarListInfo ListInfo={sizeof(FarListInfo)};
 	Info.SendDlgMessage(hDlg,DM_LISTINFO,DlgLIST,&ListInfo);
 	if (ListInfo.ItemsNumber)
@@ -1307,10 +1308,22 @@ bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 		Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&ListPos);
 	}
 	wchar_t Buf[64]=L"";
-	if (CountUpdModules)
-		FSF.sprintf(Buf,L" %d ",CountUpdModules);
+	if (CountUpdate)
+		FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
 	Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 	return true;
+}
+
+bool isMainDlg()
+{
+	struct WindowType Type={sizeof(WindowType)};
+	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
+	{
+		struct DialogInfo DInfo={sizeof(DialogInfo)};
+		if (hDlg && Info.SendDlgMessage(hDlg,DM_GETDIALOGINFO,0,&DInfo) && ModulesDlgGuid==DInfo.Id)
+			return true;
+	}
+	return false;
 }
 
 BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
@@ -1323,22 +1336,17 @@ BOOL CALLBACK DownloadProcEx(ModuleInfo *CurInfo,DWORD Percent)
 			return false;
 		dwTicks = dwNewTicks;
 	}
-	struct WindowType Type={sizeof(WindowType)};
-	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
+	if (isMainDlg())
 	{
-		struct DialogInfo DInfo={sizeof(DialogInfo)};
-		if (hDlg && Info.SendDlgMessage(hDlg,DM_GETDIALOGINFO,0,&DInfo) && ModulesDlgGuid==DInfo.Id)
-		{
-			wchar_t Buf[MAX_PATH];
-			struct FarListItem Item={};
-			MakeListItem(CurInfo,Buf,Item,Percent);
-			intptr_t CurPos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,nullptr);
-			if (CurInfo->ID==CurPos)
-				Item.Flags|=LIF_SELECTED;
-			struct FarListUpdate FLU={sizeof(FarListUpdate),CurInfo->ID,Item};
-			if (!Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
-				return FALSE;
-		}
+		wchar_t Buf[MAX_PATH];
+		struct FarListItem Item={};
+		MakeListItem(CurInfo,Buf,Item,Percent);
+		intptr_t CurPos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,nullptr);
+		if (CurInfo->ID==CurPos)
+			Item.Flags|=LIF_SELECTED;
+		struct FarListUpdate FLU={sizeof(FarListUpdate),CurInfo->ID,Item};
+		if (!Info.SendDlgMessage(hDlg,DM_LISTUPDATE,DlgLIST,&FLU))
+			return FALSE;
 	}
 	return TRUE;
 }
@@ -1361,7 +1369,14 @@ bool DownloadUpdates()
 
 			struct DownloadParam Param={&ipc.Modules[i],DownloadProcEx};
 			if (WinInetDownloadEx(i==0?FarRemoteSrv:PlugRemoteSrv,URL,LocalFile,false,&Param)==0)
+			{
+				CountDownload++;
+				wchar_t Buf[64]=L"";
+				FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
+				if (isMainDlg())
+					Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 				NeedRestart=true;
+			}
 		}
 		// прервали
 		if (GetStatus()==S_NONE)
@@ -1383,13 +1398,8 @@ bool DownloadUpdates()
 		if (bUPD)
 			SetStatus(S_UPTODATE);
 	}
-	struct WindowType Type={sizeof(WindowType)};
-	if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_DIALOG)
-	{
-		struct DialogInfo DInfo={sizeof(DialogInfo)};
-		if (hDlg && Info.SendDlgMessage(hDlg,DM_GETDIALOGINFO,0,&DInfo) && ModulesDlgGuid==DInfo.Id)
-			Info.SendDlgMessage(hDlg,DN_UPDDLG,0,0);
-	}
+	if (isMainDlg())
+		Info.SendDlgMessage(hDlg,DN_UPDDLG,0,0);
 	return true;
 }
 
@@ -1442,7 +1452,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 			{
 				FarColor Color;
 				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
-				if (CountUpdModules)
+				if (CountUpdate)
 					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
 				Colors->Colors[0]=Color;
 			}
@@ -1501,17 +1511,17 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 										{
 											if (record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED)
 											{
-												if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdModules--; }
-												else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdModules++; }
+												if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdate--; }
+												else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdate++; }
 											}
 											else
 											{
 												if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
-												else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdModules?CountUpdModules--:0; }
+												else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdate?CountUpdate--:0; }
 											}
 											wchar_t Buf[64]=L"";
-											if (CountUpdModules)
-												FSF.sprintf(Buf,L" %d ",CountUpdModules);
+											if (CountUpdate)
+												FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
 											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 											return false;
 										}
@@ -1592,19 +1602,19 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 											{
 												if (vk==VK_INSERT || vk==VK_ADD)
 												{
-													if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdModules--; }
-													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdModules++; }
+													if (Cur->Flags&UPD) { Cur->Flags&=~UPD; CountUpdate--; }
+													else { Cur->Flags|=UPD; Cur->Flags&=~SKIP; Cur->Flags&=~ERR; CountUpdate++; }
 												}
 												else
 												{
 													if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
-													else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdModules?CountUpdModules--:0; }
+													else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdate?CountUpdate--:0; }
 												}
 												FLP.SelectPos++;
 												Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
 												wchar_t Buf[64]=L"";
-												if (CountUpdModules)
-													FSF.sprintf(Buf,L" %d ",CountUpdModules);
+												if (CountUpdate)
+													FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
 												Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 												return true;
 											}
@@ -2308,15 +2318,24 @@ DWORD WINAPI NotifyProc(LPVOID)
 			tray_icondata.hIcon=tray_icon;
 			tray_icondata.uTimeout=NOTIFY_DURATION;
 			tray_icondata.dwInfoFlags=NIIF_INFO|NIIF_LARGE_ICON;
-			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdModules);
+			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdate,CountDownload);
 			lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
 			lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
 			tray_icondata.uCallbackMessage=WM_TRAY_TRAYMSG;
 
 			if (Shell_NotifyIcon(NIM_ADD, &tray_icondata))
 			{
+				size_t n=CountDownload;
 				for (;;)
 				{
+					if (n!=CountDownload)
+					{
+						n++;
+						FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdate,CountDownload);
+						lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
+						lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
+						Shell_NotifyIcon(NIM_MODIFY, &tray_icondata);
+					}
 					MSG msg;
 					if (PeekMessage(&msg,nullptr,0,0,PM_NOREMOVE))
 					{
