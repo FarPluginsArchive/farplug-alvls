@@ -1309,7 +1309,7 @@ bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 	}
 	wchar_t Buf[64]=L"";
 	if (CountUpdate)
-		FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
+		FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
 	Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 	return true;
 }
@@ -1372,7 +1372,7 @@ bool DownloadUpdates()
 			{
 				CountDownload++;
 				wchar_t Buf[64]=L"";
-				FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
+				FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
 				if (isMainDlg())
 					Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 				NeedRestart=true;
@@ -1521,7 +1521,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 											}
 											wchar_t Buf[64]=L"";
 											if (CountUpdate)
-												FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
+												FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
 											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 											return false;
 										}
@@ -1614,7 +1614,7 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 												Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
 												wchar_t Buf[64]=L"";
 												if (CountUpdate)
-													FSF.sprintf(Buf,L" %d(%d) ",CountUpdate,CountDownload);
+													FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
 												Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 												return true;
 											}
