@@ -12,7 +12,7 @@ echo -=-=-=-=-=-=-=-=-=-=-=-=-=
   set "undo="
   for /f "tokens=1,2 delims=|=" %%a in (%cache%) do if "" == "%undo%" call :proc_line %%a %%b
   if not "" == "%undo%" (
-    echo Undo: "%_7z%" x "%updtmp%\%undo%" -o"%far%"
+    echo Undo: "%_7z%" x "%updtmp%\%undo%" -o"%far%" -y
     echo Для продолжения нажмите любую клавишу...
     pause>nul
     "%_7z%" x "%updtmp%\%undo%" -o"%far%" -y
