@@ -1560,6 +1560,33 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				else if (Param1==DlgSEP1 && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
 						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
 					goto GOTO_F7;
+				else if (Param1==DlgPATH && record->Event.MouseEvent.dwButtonState==RIGHTMOST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+					goto GOTO_F8;
+				else if (Param1==DlgINFO && record->Event.MouseEvent.dwButtonState==FROM_LEFT_1ST_BUTTON_PRESSED &&
+						record->Event.MouseEvent.dwEventFlags==DOUBLE_CLICK)
+				{
+					intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
+					ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
+					ModuleInfo *Cur=Tmp?*Tmp:nullptr;
+					if (Cur)
+					{
+						if (Cur->Guid==FarGuid || (Cur->Flags&STD))
+						{
+							ShellExecute(nullptr,L"open",L"http://www.farmanager.com/nightly.php",nullptr,nullptr,SW_SHOWNORMAL);
+							return true;
+						}
+						else if (Cur->pid[0])
+						{
+							wchar_t url[128]=L"http://plugring.farmanager.com/plugin.php?pid=";
+							lstrcat(url,Cur->pid);
+							ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+							return true;
+						}
+						else
+							MessageBeep(MB_OK);
+					}
+				}
 				return false;
 			}
 			else if (record->EventType==KEY_EVENT && record->Event.KeyEvent.bKeyDown)
@@ -1800,6 +1827,7 @@ GOTO_F7:
 						}
 						else if (vk==VK_F8)
 						{
+GOTO_F8:
 							if (ipc.opt.Mode==MODE_UPD && GetStatus()!=S_DOWNLOAD && GetStatus()!=S_COMPLET)
 							{
 								intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
@@ -1874,8 +1902,7 @@ GOTO_F7:
 							{
 								if (Cur->Guid==FarGuid || (Cur->Flags&STD))
 								{
-									wchar_t url[]=L"http://www.farmanager.com/nightly.php";
-									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+									ShellExecute(nullptr,L"open",L"http://www.farmanager.com/nightly.php",nullptr,nullptr,SW_SHOWNORMAL);
 									return true;
 								}
 								else if (Cur->pid[0])

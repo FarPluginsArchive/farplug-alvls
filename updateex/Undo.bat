@@ -6,6 +6,7 @@ echo -=-=-=-=-=-=-=-=-=-=-=-=-=
   set far=D:\Far3
   set updtmp=D:\Far3\UpdateEx
   set cache=%updtmp%\UpdateEx.dll.x86.cache
+  set postInstall=%far%\install.bat
   set _7z=%ProgramFiles%\7-Zip\7z.exe
 
   set our=N
@@ -16,6 +17,7 @@ echo -=-=-=-=-=-=-=-=-=-=-=-=-=
     echo Для продолжения нажмите любую клавишу...
     pause>nul
     "%_7z%" x "%updtmp%\%undo%" -o"%far%" -y
+    if exist "%postInstall%" call "%postInstall%"
   )
 goto :EOF
  
