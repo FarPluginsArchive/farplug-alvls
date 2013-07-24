@@ -2431,7 +2431,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 							struct WindowType Type={sizeof(WindowType)};
 							if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && (Type.Type==WTYPE_PANELS || Type.Type==WTYPE_VIEWER || Type.Type==WTYPE_EDITOR))
 								break;
-							Sleep(1000);
+							Sleep(100);
 						}
 						bool Cancel=true;
 						HANDLE hEvent=CreateEvent(nullptr,FALSE,FALSE,nullptr);
@@ -2454,7 +2454,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 			SetEvent(UnlockEvent);
 		}
 		if (ExitFAR) Info.AdvControl(&MainGuid,ACTL_QUIT,0,0);
-		Sleep(1000);
+		Sleep(100);
 	}
 	return 0;
 }
@@ -2516,14 +2516,24 @@ intptr_t WINAPI ConfigureW(const ConfigureInfo* Info)
 
 VOID WINAPI ExitFARW(ExitInfo* Info)
 {
+	if (hNotifyThread)
+	{
+		DWORD ec = 0;
+		if (GetExitCodeThread(hNotifyThread, &ec) == STILL_ACTIVE)
+			TerminateThread(hNotifyThread, ec);
+		WaitForSingleObject(hNotifyThread,INFINITE);
+		CloseHandle(hNotifyThread);
+		hNotifyThread=nullptr;
+	}
 	if (hThread)
 	{
 		SetEvent(StopEvent);
-//		if (WaitForSingleObject(hThread,500)== WAIT_TIMEOUT)
+		if (WaitForSingleObject(hThread,300)== WAIT_TIMEOUT)
 		{
 			DWORD ec = 0;
 			if (GetExitCodeThread(hThread, &ec) == STILL_ACTIVE)
 				TerminateThread(hThread, ec);
+			WaitForSingleObject(hThread,INFINITE);
 		}
 		CloseHandle(hThread);
 		hThread=nullptr;
@@ -2532,14 +2542,6 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 	CloseHandle(StopEvent);
 	CloseHandle(UnlockEvent);
 	if (hRunDll) CloseHandle(hRunDll);
-	if (hNotifyThread)
-	{
-		DWORD ec = 0;
-		if (GetExitCodeThread(hNotifyThread, &ec) == STILL_ACTIVE)
-			TerminateThread(hNotifyThread, ec);
-		CloseHandle(hNotifyThread);
-		hNotifyThread=nullptr;
-	}
 	FreeModulesInfo();
 	Clean();
 }
