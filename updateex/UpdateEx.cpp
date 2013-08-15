@@ -1007,7 +1007,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 												free(Buf); Buf=nullptr;
 											}
 
-											if (NeedUpdate(MinFarVer,CurFarVer,true) || CheckFarVer(CurFarVer,true))
+											if (NeedUpdate(MinFarVer,CurFarVer,true) || ((CurInfo->Flags&ANSI) && CheckFarVer(CurFarVer,true)))
 											{
 												// запрашиваем CurVer
 												Buf=CharToWChar(file->Attribute("version_major"));

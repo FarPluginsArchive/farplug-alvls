@@ -73,7 +73,7 @@ lng: lng.templ
 	@copy /b UpdateEx_ru.hlf $(OUTDIR)\UpdateEx_ru.hlf
 	@copy /b changelog $(OUTDIR)\changelog
 	@copy /b Readme.txt $(OUTDIR)\Readme.txt
-	@copy /b Undo.bat $(OUTDIR)\Undo.bat
+	@copy /b Undo.example.bat.$(_ODB_) $(OUTDIR)\Undo.example.bat
 
 $(PCH): headers.cpp
 	@echo making precompiled headers
