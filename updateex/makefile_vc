@@ -71,6 +71,7 @@ lng: lng.templ
 	@tools\lng.generator.exe -nc -i lng.ini -ol "$(OUTDIR)" lng.templ
 	@copy /b $(DLLNAME).example.config $(OUTDIR)\$(DLLNAME).example.config
 	@copy /b UpdateEx_ru.hlf $(OUTDIR)\UpdateEx_ru.hlf
+	@copy /b UpdateEx_en.hlf $(OUTDIR)\UpdateEx_en.hlf
 	@copy /b changelog $(OUTDIR)\changelog
 	@copy /b Readme.txt $(OUTDIR)\Readme.txt
 	@copy /b Undo.example.bat.$(_ODB_) $(OUTDIR)\Undo.example.bat

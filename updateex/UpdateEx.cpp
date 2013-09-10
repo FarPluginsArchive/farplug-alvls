@@ -155,6 +155,7 @@ struct EventStruct
 bool NeedRestart=false;
 bool ExitFAR=false;
 DWORD Status=S_NONE;
+size_t CountListItems=0;
 size_t CountUpdate=0;
 size_t CountDownload=0;
 
@@ -1127,7 +1128,6 @@ void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD
 	if (Cur->Flags&UPD)
 	{
 		Item.Flags|=(LIF_CHECKED|0x2b);
-//	CountUpdate++;
 	}
 	else if (Cur->Flags&SKIP)
 		Item.Flags|=(LIF_CHECKED|0x2d);
@@ -1260,14 +1260,11 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 
 bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 {
-//	CountUpdate=0;
+	CountListItems=0;
 	struct FarListInfo ListInfo={sizeof(FarListInfo)};
 	Info.SendDlgMessage(hDlg,DM_LISTINFO,DlgLIST,&ListInfo);
 	if (ListInfo.ItemsNumber)
 		Info.SendDlgMessage(hDlg,DM_LISTDELETE,DlgLIST,0);
-
-	if (!ipc.CountModules)
-		return true;
 
 	for (size_t i=0,ii=0; i<ipc.CountModules; i++)
 	{
@@ -1294,6 +1291,7 @@ bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 				// ... то ассоциируем данные с элементом листа
 				struct FarListItemData Data={sizeof(FarListItemData)};
 				Data.Index=ii++;
+				CountListItems=ii;
 				Data.DataSize=sizeof(Cur);
 				Data.Data=&Cur;
 				Info.SendDlgMessage(hDlg,DM_LISTSETDATA,DlgLIST,&Data);
@@ -1307,9 +1305,11 @@ bool MakeList(HANDLE hDlg,intptr_t SetCurPos=0)
 		ListPos.TopPos=ListInfo.TopPos;
 		Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&ListPos);
 	}
-	wchar_t Buf[64]=L"";
+	wchar_t Buf[64];
 	if (CountUpdate)
-		FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
+		FSF.sprintf(Buf,MSG(MSepInfo2),CountUpdate,CountDownload);
+	else
+		FSF.sprintf(Buf,MSG(MSepInfo),CountListItems);
 	Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 	return true;
 }
@@ -1371,8 +1371,8 @@ bool DownloadUpdates()
 			if (WinInetDownloadEx(i==0?FarRemoteSrv:PlugRemoteSrv,URL,LocalFile,false,&Param)==0)
 			{
 				CountDownload++;
-				wchar_t Buf[64]=L"";
-				FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
+				wchar_t Buf[64];
+				FSF.sprintf(Buf,MSG(MSepInfo2),CountUpdate,CountDownload);
 				if (isMainDlg())
 					Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 				NeedRestart=true;
@@ -1453,8 +1453,10 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 				FarColor Color;
 				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
 				if (CountUpdate)
+				{
 					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
-				Colors->Colors[0]=Color;
+					Colors->Colors[0]=Color;
+				}
 			}
 			break;
 
@@ -1519,9 +1521,11 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 												if (Cur->Flags&SKIP) Cur->Flags&=~SKIP;
 												else { Cur->Flags|=SKIP; Cur->Flags&=~UPD; Cur->Flags&=~ERR; CountUpdate?CountUpdate--:0; }
 											}
-											wchar_t Buf[64]=L"";
+											wchar_t Buf[64];
 											if (CountUpdate)
-												FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
+												FSF.sprintf(Buf,MSG(MSepInfo2),CountUpdate,CountDownload);
+											else
+												FSF.sprintf(Buf,MSG(MSepInfo),CountListItems);
 											Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 											return false;
 										}
@@ -1639,9 +1643,11 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 												}
 												FLP.SelectPos++;
 												Info.SendDlgMessage(hDlg,DM_LISTSETCURPOS,DlgLIST,&FLP);
-												wchar_t Buf[64]=L"";
+												wchar_t Buf[64];
 												if (CountUpdate)
-													FSF.sprintf(Buf,MSG(MSepInfo),CountUpdate,CountDownload);
+													FSF.sprintf(Buf,MSG(MSepInfo2),CountUpdate,CountDownload);
+												else
+													FSF.sprintf(Buf,MSG(MSepInfo),CountListItems);
 												Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgSEP2,Buf);
 												return true;
 											}

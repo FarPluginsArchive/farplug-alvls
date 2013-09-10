@@ -1,0 +1,122 @@
+.Language=English, English
+.PluginContents=UpdateEx
+
+@Contents
+$^ #UpdateEx#
+$^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
+
+ Plugin is intended for updating Far Manager v.3.0.2927 (or newer) and its plugins thru PlugRinG.
+
+ Basic settings of the plugin are in FAR main menu Options -> Plugins configuration.
+ Advanced settings pluging load from #UpdateEx.dll.config#. As an example, attached file #UpdateEx.dll.example.config#.
+ Pluging requires 7z.dll library that must be located in one of:
+ - pluging folder;
+ - ArcLite pluging folder;
+ - 7-zip archiver folder (if 7-zip installed in OS).
+
+ Bundled with the plugin is Undo.example.bat. Allows you to roll back to the previous Far Manager distribution. Use it when installed package doesn't want to run (it also happens that :). Before using configure your way!
+
+ #WARNING!#
+ For correct plugin operation, content on PlugRinG must meet the following conditions:
+ 1) Plugin should be archived in 7z, zip or rar archive;
+ 2) PlugRinG archive should be displayed flags: binary x86 (x64 - 64-bit);
+ 3) Displays the version of Far Manager: 3.0.2927 or newer;
+ 4) Separate archives for x86 and x64 Far Manager versions;
+
+ NOTE to pluging-writers:
+ To avoid confusion recommended to delete old versions of the archives for Far Manager v.3.0 from PlugRinG.
+ UpdateEx unpacks the archive directly to the module folder, therefore, recommended place the dll, lng, hlf-plugin files in the root of the archive.
+
+
+^ Available keys in plugin dialogue
+
+ #F2#                 - show changelog
+
+ #F3#                 - show module descrition in viewer
+
+ #F4#                 - edit install path (in new modules search mode!)
+
+ #F6#                 - Undo (rollback to previous module package)
+
+ #F7#                 - new modules search mode at PlugRinG
+
+ #F8#                 - delete (uninstall) module to Recycle Bin
+
+ #Ins, Num +#         - mark module for update
+
+ #Del, Num -#         - disable module update
+
+ #Ctrl-H#             - hide unavailable modules
+
+ #Ctrl[-Shift]-PgUp#  - open under cursor plugin folder
+
+ #Ctrl[-Shift]-PgDn#  - enter under cursor plugin package
+
+ #Ctrl[-Shift]-Home#  - open download folder
+
+ #Shift-Enter#        - open PlugRinG plugin topic
+
+ #Shift-Ins#          - send plugin pacakage to PlugRinG
+
+ #Ctrl-Ins#           - copy pluging path to clipboard
+
+ #Ctrl-0#             - hide separators on list
+
+ #Ctrl-1#             - show installed module date
+
+ Mouse click in the field with "#+#" or "#-#" change the mark.
+ Left double-click in list is as #F2#, right doubleclick is as #Ctrl-H#.
+ Left double-click on separator with function keys hint is as #F7#, right doubleclick is as #F6#.
+ Double-click on the line with the relevant information on the module is as #F3#, #F4#, #F8#, #Shift-Enter#.
+
+@Config
+$^ #UpdateEx#
+$^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
+
+^ Here you can change the basic plugin settings
+
+    #Update Far Manager stable build#
+
+ Allows search the stable builds instead nightly, although the nightly builds is usually more stable :)
+
+    #Download archives automatically#
+
+ No comments ;)
+
+    #Display notification in tray#
+
+ If checked, tray notification will appear when auto-update is downloading.
+ Previous option must be checked
+
+    #sec, to wait the server response#
+
+ farmanager.com server response timeout till error message
+
+    #Save Far Manager packages after install#
+
+ Whether to save the downloaded Far Manager updates after installation.
+ This option affects creating a cache of updates rollback.
+ [ ] - delete;
+ [x] - keep;
+ [?] - keep the previous and current packages (default).
+
+    #Save plugins packages after install#
+
+ Whether to save the downloaded plugins updates after installation.
+ Like the previous option.
+
+    #Date format: YYYY-MM-DD#
+
+ Set date format using at farmanager.com server.
+
+    #Use proxy server#
+
+ Whether to use proxy server to connect to farmanager.com server.
+ If necessary, specify the #Address:Port# and #User/Pass#
+
+    #Temporary folder:#
+
+ Folder for downloading updates. "%TEMP%\UpdateEx\" by default.
+
+
+ Advanced settings pluging load from #UpdateEx.dll.config#. As an example, attached file #UpdateEx.dll.example.config#.
