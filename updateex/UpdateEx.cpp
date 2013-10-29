@@ -318,7 +318,7 @@ struct STDPLUG
 	const GUID *Guid;
 	wchar_t *Changelog;
 } StdPlug[]= {
-	{0, &FarGuid,        L"http://www.farmanager.com/svn/trunk/unicode_far/changelog"},
+	{0, &FarGuid,        L"http://farmanager.googlecode.com/svn/trunk/unicode_far/changelog"},
 	{1, &AlignGuid,      L"align"},
 	{2, &ArcliteGuid,    L"arclite"},
 	{3, &AutowrapGuid,   L"autowrap"},
@@ -842,7 +842,7 @@ lastchange="t-rex 08.02.2013 16:52:35 +0200 - build 3167"
 							{
 								if (j<16)
 								{
-									wchar_t url[512]=L"http://www.farmanager.com/svn/trunk/plugins/";
+									wchar_t url[512]=L"http://farmanager.googlecode.com/svn/trunk/plugins/";
 									lstrcat(url,StdPlug[j].Changelog);
 									lstrcat(url,L"/changelog");
 									lstrcpy(ipc.Modules[i].Changelog,url);
@@ -1448,15 +1448,12 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 	/************************************************************************/
 
 		case DN_CTLCOLORDLGITEM:
-			if (Param1==DlgSEP2)
+			if (Param1==DlgSEP2 && CountUpdate)
 			{
 				FarColor Color;
 				struct FarDialogItemColors *Colors=(FarDialogItemColors*)Param2;
-				if (CountUpdate)
-				{
-					Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
-					Colors->Colors[0]=Color;
-				}
+				Info.AdvControl(&MainGuid,ACTL_GETCOLOR,COL_DIALOGHIGHLIGHTSELECTEDBUTTON,&Color);
+				Colors->Colors[0]=Color;
 			}
 			break;
 
