@@ -334,7 +334,7 @@ struct STDPLUG
 	{13,&NetworkGuid,    L"network"},
 	{14,&ProclistGuid,   L"proclist"},
 	{15,&TmppanelGuid,   L"tmppanel"},
-	{16,&FarcolorerGuid, L"http://colorer.svn.sourceforge.net/viewvc/colorer/trunk/far3colorer/changelog"},
+	{16,&FarcolorerGuid, L"http://raw.github.com/colorer/FarColorer/master/docs/history.ru.txt"},
 	{17,&NetboxGuid,     L"http://raw.github.com/michaellukashov/Far-NetBox/master/ChangeLog"}
 };
 
@@ -1113,10 +1113,11 @@ enum {
 	DlgDESC,        // 3
 	DlgAUTHOR,      // 4
 	DlgPATH,        // 5
-	DlgINFO,        // 6
-	DlgSEP2,        // 7
-	DlgUPD,         // 8
-	DlgCANCEL,      // 9
+	DlgGUID,        // 6
+	DlgINFO,        // 7
+	DlgSEP2,        // 8
+	DlgUPD,         // 9
+	DlgCANCEL,      // 10
 };
 
 void MakeListItem(ModuleInfo *Cur, wchar_t *Buf, struct FarListItem &Item, DWORD Percent=-1)
@@ -1222,6 +1223,9 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		lstrcpy(Buf,Cur->ModuleName);
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,FSF.TruncPathStr(Buf,80-2-2));
 
+		GuidToStr(Cur->Guid,Buf);
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgGUID,Buf);
+
 		if (Cur->Flags&ERR)
 			lstrcpy(Buf,MSG(MCantDownloadArc));
 		else
@@ -1253,6 +1257,7 @@ void MakeListItemInfo(HANDLE hDlg,void *Pos)
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgDESC,L"");
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgAUTHOR,L"");
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgPATH,L"");
+		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgGUID,L"");
 		Info.SendDlgMessage(hDlg,DM_SETTEXTPTR,DlgINFO,(void*)MSG(MIsNonInfo));
 	}
 	Info.SendDlgMessage(hDlg,DM_REDRAW,0,0);
@@ -1572,14 +1577,22 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 					ModuleInfo *Cur=Tmp?*Tmp:nullptr;
 					if (Cur)
 					{
-						if (Cur->Guid==FarGuid || (Cur->Flags&STD))
+						wchar_t url[2048], Guid[37];
+						GuidToStr(Cur->Guid,Guid);
+						GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),ipc.Config);
+						if (url[0])
+						{
+							ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+							return true;
+						}
+						else if (Cur->Guid==FarGuid || (Cur->Flags&STD))
 						{
 							ShellExecute(nullptr,L"open",L"http://www.farmanager.com/nightly.php",nullptr,nullptr,SW_SHOWNORMAL);
 							return true;
 						}
 						else if (Cur->pid[0])
 						{
-							wchar_t url[128]=L"http://plugring.farmanager.com/plugin.php?pid=";
+							lstrcpy(url,L"http://plugring.farmanager.com/plugin.php?pid=");
 							lstrcat(url,Cur->pid);
 							ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
 							return true;
@@ -1661,10 +1674,21 @@ GOTO_F2:
 							intptr_t Pos=Info.SendDlgMessage(hDlg,DM_LISTGETCURPOS,DlgLIST,0);
 							ModuleInfo **Tmp=(ModuleInfo **)Info.SendDlgMessage(hDlg,DM_LISTGETDATA,DlgLIST,(void *)Pos);
 							ModuleInfo *Cur=Tmp?*Tmp:nullptr;
-							if (Cur && Cur->Changelog[0])
+							if (Cur)
 							{
-								ShellExecute(nullptr,L"open",Cur->Changelog,nullptr,nullptr,SW_SHOWNORMAL);
-								return true;
+								wchar_t url[2048], Guid[37];
+								GuidToStr(Cur->Guid,Guid);
+								GetPrivateProfileString(Guid,L"URLChangelog",L"",url,ARRAYSIZE(url),ipc.Config);
+								if (url[0])
+								{
+									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+									return true;
+								}
+								else if (Cur->Changelog[0])
+								{
+									ShellExecute(nullptr,L"open",Cur->Changelog,nullptr,nullptr,SW_SHOWNORMAL);
+									return true;
+								}
 							}
 							MessageBeep(MB_OK);
 							return true;
@@ -1903,14 +1927,22 @@ GOTO_F8:
 						{
 							if (vk==VK_RETURN)
 							{
-								if (Cur->Guid==FarGuid || (Cur->Flags&STD))
+								wchar_t url[2048], Guid[37];
+								GuidToStr(Cur->Guid,Guid);
+								GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),ipc.Config);
+								if (url[0])
+								{
+									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+									return true;
+								}
+								else if (Cur->Guid==FarGuid || (Cur->Flags&STD))
 								{
 									ShellExecute(nullptr,L"open",L"http://www.farmanager.com/nightly.php",nullptr,nullptr,SW_SHOWNORMAL);
 									return true;
 								}
 								else if (Cur->pid[0])
 								{
-									wchar_t url[128]=L"http://plugring.farmanager.com/plugin.php?pid=";
+									lstrcpy(url,L"http://plugring.farmanager.com/plugin.php?pid=");
 									lstrcat(url,Cur->pid);
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
 									return true;
@@ -2156,15 +2188,16 @@ bool ShowModulesDialog()
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2	Selected	History	Mask	Flags	Data	MaxLen	UserParam
 		/* 0*/{DI_DOUBLEBOX,  0, 0,80,25, 0, 0, 0,                             0, MSG(MAvailableUpdates),0,0},
-		/* 1*/{DI_LISTBOX,    1, 1,78,16, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
-		/* 2*/{DI_TEXT,      -1,17, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
-		/* 3*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 4*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 5*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 6*/{DI_TEXT,       2,21,78,21,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
-		/* 7*/{DI_TEXT,      -1,22, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
-		/* 8*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MDownload),0,0},
-		/* 9*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0,             DIF_CENTERGROUP, MSG(MCancel),0,0}
+		/* 1*/{DI_LISTBOX,    1, 1,78,15, 0, 0, 0, DIF_FOCUS|DIF_LISTNOCLOSE|DIF_LISTNOBOX,0,0,0},
+		/* 2*/{DI_TEXT,      -1,16, 0, 0, 0, 0, 0,            DIF_SEPARATOR,MSG(MListButton),0,0},
+		/* 3*/{DI_TEXT,       2,17,78,17,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 4*/{DI_TEXT,       2,18,78,18,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 5*/{DI_TEXT,       2,19,78,19,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 6*/{DI_TEXT,       2,20,78,20,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 7*/{DI_TEXT,       2,21,78,21,78, 0, 0,                    DIF_SHOWAMPERSAND, L"",0,0},
+		/* 8*/{DI_TEXT,      -1,22, 0, 0, 0, 0, 0,                       DIF_SEPARATOR2, L"",0,0},
+		/* 9*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MDownload),0,0},
+		/*10*/{DI_BUTTON,     0,23, 0, 0, 0, 0, 0,             DIF_CENTERGROUP, MSG(MCancel),0,0}
 	};
 
 	bool ret=false;
