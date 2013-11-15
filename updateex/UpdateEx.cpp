@@ -1580,6 +1580,19 @@ intptr_t WINAPI ShowModulesDialogProc(HANDLE hDlg,intptr_t Msg,intptr_t Param1,v
 						wchar_t url[2048], Guid[37];
 						GuidToStr(Cur->Guid,Guid);
 						GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),ipc.Config);
+						if (url[0]==0)
+						{
+							wchar_t local_config[MAX_PATH];
+							GetModuleDir(Cur->ModuleName,local_config);
+							// коррекция
+							{
+								int len=lstrlen(local_config);
+								if (len>5 && !lstrcmpi(&local_config[len-5],L"\\bin\\"))
+									local_config[len-4]=0;
+							}
+							lstrcat(local_config,L"UpdateEx.dll.local.config");
+							GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),local_config);
+						}
 						if (url[0])
 						{
 							ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
@@ -1679,6 +1692,19 @@ GOTO_F2:
 								wchar_t url[2048], Guid[37];
 								GuidToStr(Cur->Guid,Guid);
 								GetPrivateProfileString(Guid,L"URLChangelog",L"",url,ARRAYSIZE(url),ipc.Config);
+								if (url[0]==0)
+								{
+									wchar_t local_config[MAX_PATH];
+									GetModuleDir(Cur->ModuleName,local_config);
+									// коррекция
+									{
+										int len=lstrlen(local_config);
+										if (len>5 && !lstrcmpi(&local_config[len-5],L"\\bin\\"))
+											local_config[len-4]=0;
+									}
+									lstrcat(local_config,L"UpdateEx.dll.local.config");
+									GetPrivateProfileString(Guid,L"URLChangelog",L"",url,ARRAYSIZE(url),local_config);
+								}
 								if (url[0])
 								{
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
@@ -1930,6 +1956,19 @@ GOTO_F8:
 								wchar_t url[2048], Guid[37];
 								GuidToStr(Cur->Guid,Guid);
 								GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),ipc.Config);
+								if (url[0]==0)
+								{
+									wchar_t local_config[MAX_PATH];
+									GetModuleDir(Cur->ModuleName,local_config);
+									// коррекция
+									{
+										int len=lstrlen(local_config);
+										if (len>5 && !lstrcmpi(&local_config[len-5],L"\\bin\\"))
+											local_config[len-4]=0;
+									}
+									lstrcat(local_config,L"UpdateEx.dll.local.config");
+									GetPrivateProfileString(Guid,L"URLHome",L"",url,ARRAYSIZE(url),local_config);
+								}
 								if (url[0])
 								{
 									ShellExecute(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
@@ -2827,6 +2866,12 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 									if(GetFileAttributes(local_arc)!=INVALID_FILE_ATTRIBUTES)
 									{
 										bPreInstall=true;
+										// сначала локальный
+										wchar_t local_config[MAX_PATH];
+										lstrcpy(local_config,destpath);
+										lstrcat(local_config,L"UpdateEx.dll.local.config");
+										Exec(bPreInstall,&MInfo[i].Guid,local_config,destpath);
+										// а теперь глобальный
 										Exec(bPreInstall,&MInfo[i].Guid,ipc.Config,destpath);
 
 										bool Result=false;
@@ -2910,6 +2955,9 @@ EXTERN_C VOID WINAPI RestartFARW(HWND,HINSTANCE,LPCWSTR lpCmd,DWORD)
 											}
 
 											bPreInstall=false;
+											// сначала локальный
+											Exec(bPreInstall,&MInfo[i].Guid,local_config,destpath);
+											// а теперь глобальный
 											Exec(bPreInstall,&MInfo[i].Guid,ipc.Config,destpath);
 										}
 										else
