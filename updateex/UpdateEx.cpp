@@ -228,7 +228,7 @@ bool IsTime()
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 	EnterCriticalSection(&cs);
-	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay||(st.wHour-SavedTime.wHour)>=3;
+	bool Result=st.wYear!=SavedTime.wYear||st.wMonth!=SavedTime.wMonth||st.wDay!=SavedTime.wDay||(st.wHour-SavedTime.wHour)>=1;
 	LeaveCriticalSection(&cs);
 	return Result;
 }
@@ -2420,7 +2420,7 @@ DWORD WINAPI NotifyProc(LPVOID)
 			tray_icondata.hIcon=tray_icon;
 			tray_icondata.uTimeout=NOTIFY_DURATION;
 			tray_icondata.dwInfoFlags=NIIF_INFO|NIIF_LARGE_ICON;
-			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdate,CountDownload);
+			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountDownload,CountUpdate);
 			lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
 			lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
 			tray_icondata.uCallbackMessage=WM_TRAY_TRAYMSG;
@@ -2433,7 +2433,7 @@ DWORD WINAPI NotifyProc(LPVOID)
 					if (n!=CountDownload)
 					{
 						n++;
-						FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountUpdate,CountDownload);
+						FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountDownload,CountUpdate);
 						lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
 						lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
 						Shell_NotifyIcon(NIM_MODIFY, &tray_icondata);
@@ -2504,7 +2504,7 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 						for (;;)
 						{
 							struct WindowType Type={sizeof(WindowType)};
-							if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && (Type.Type==WTYPE_PANELS || Type.Type==WTYPE_VIEWER || Type.Type==WTYPE_EDITOR))
+							if (Info.AdvControl(&MainGuid,ACTL_GETWINDOWTYPE,0,&Type) && Type.Type==WTYPE_PANELS)
 								break;
 							Sleep(100);
 						}
@@ -2518,8 +2518,8 @@ DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 							StartUpdate(true);
 					}
 				}
-				SaveTime();
 			}
+			SaveTime();
 			SetEvent(UnlockEvent);
 		}
 		else if (GetStatus()==S_DOWNLOAD)
@@ -2579,7 +2579,7 @@ VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
 	pInfo->PluginConfig.Guids = &CfgMenuGuid;
 	pInfo->PluginConfig.Strings = PluginConfigStrings;
 	pInfo->PluginConfig.Count = ARRAYSIZE(PluginConfigStrings);
-	pInfo->Flags=PF_EDITOR|PF_VIEWER|PF_PRELOAD;
+	pInfo->Flags=PF_PRELOAD;
 	static LPCWSTR CommandPrefix=L"updex";
 	pInfo->CommandPrefix=CommandPrefix;
 }
