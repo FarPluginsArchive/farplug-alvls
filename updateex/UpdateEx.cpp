@@ -91,6 +91,7 @@ struct OPT
 	DWORD SavePlugAfterInstall;
 	DWORD ShowDate;
 	DWORD ShowDraw;
+	DWORD Autoload;
 	DWORD Proxy;
 	wchar_t ProxyName[MAX_PATH];
 	wchar_t ProxyUser[MAX_PATH];
@@ -170,6 +171,8 @@ HANDLE StopEvent=nullptr;
 HANDLE UnlockEvent=nullptr;
 HANDLE WaitEvent=nullptr;
 HANDLE hNotifyThread=nullptr;
+HANDLE hAutoloadThread=nullptr;
+HANDLE hExitAutoloadThreadEvent=nullptr;
 
 CRITICAL_SECTION cs;
 
@@ -1917,6 +1920,8 @@ GOTO_F8:
 													if (Cur->ID==ipc.Modules[i].ID)
 														break;
 												}
+												if (Cur->Flags&UPD)
+													CountUpdate--;
 												for(size_t j=i+1; i && i<ipc.CountModules && j<ipc.CountModules; i++,j++)
 													memcpy(&ipc.Modules[i],&ipc.Modules[j],sizeof(ModuleInfo));
 												ipc.Modules=(ModuleInfo *)realloc(ipc.Modules,(--ipc.CountModules)*sizeof(ModuleInfo));
@@ -2262,6 +2267,7 @@ VOID ReadSettings()
 	ipc.opt.SaveFarAfterInstall=settings.Get(0,L"SaveFar",2);
 	ipc.opt.SavePlugAfterInstall=settings.Get(0,L"SavePlug",2);
 	ipc.opt.Date=settings.Get(0,L"Date",0);
+	ipc.opt.Autoload=settings.Get(0,L"Autoload",0);
 	ipc.opt.Proxy=settings.Get(0,L"Proxy",0);
 	settings.Get(0,L"Srv",ipc.opt.ProxyName,ARRAYSIZE(ipc.opt.ProxyName),L"");
 	settings.Get(0,L"User",ipc.opt.ProxyUser,ARRAYSIZE(ipc.opt.ProxyUser),L"");
@@ -2296,7 +2302,7 @@ intptr_t Config()
 
 	struct FarDialogItem DialogItems[] = {
 		//			Type	X1	Y1	X2	Y2				Selected	History	Mask	Flags	Data	MaxLen	UserParam
-		/* 0*/{DI_DOUBLEBOX,  3, 1,60,16, 0, 0, 0,                  0,MSG(MName),0,0},
+		/* 0*/{DI_DOUBLEBOX,  3, 1,60,17, 0, 0, 0,                  0,MSG(MName),0,0},
 		/* 1*/{DI_CHECKBOX,   5, 2, 0, 0, ipc.opt.Stable, 0, 0, DIF_FOCUS, MSG(MCfgStable),0,0},
 		/* 2*/{DI_CHECKBOX,   5, 3, 0, 0, ipc.opt.Auto, 0, 0,           0, MSG(MCfgAuto),0,0},
 		/* 3*/{DI_CHECKBOX,   9, 4, 0, 0, ipc.opt.TrayNotify, 0, 0,     0, MSG(MCfgTrayNotify),0,0},
@@ -2305,25 +2311,26 @@ intptr_t Config()
 		/* 6*/{DI_CHECKBOX,   5, 6, 0, 0, ipc.opt.SaveFarAfterInstall,0, 0,DIF_3STATE,MSG(MCfgSaveFar),0,0},
 		/* 7*/{DI_CHECKBOX,   5, 7, 0, 0, ipc.opt.SavePlugAfterInstall,0, 0,DIF_3STATE,MSG(MCfgSavePlug),0,0},
 		/* 8*/{DI_CHECKBOX,   5, 8, 0, 0, ipc.opt.Date,  0, 0,          0,MSG(MCfgDate),0,0},
-		/* 9*/{DI_CHECKBOX,   5, 9, 0, 0, ipc.opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
-		/*10*/{DI_TEXT,       9,10,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
-		/*11*/{DI_EDIT,      24,10,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,ipc.opt.ProxyName,0,0},
-		/*12*/{DI_TEXT,       9,11,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
-		/*13*/{DI_EDIT,      24,11,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,ipc.opt.ProxyUser,0,0},
-		/*14*/{DI_PSWEDIT,   43,11,58, 0, 0,         0, 0,          0,ipc.opt.ProxyPass,0,0},
-		/*15*/{DI_TEXT,       5,12,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
-		/*16*/{DI_EDIT,       5,13,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,ipc.opt.TempDirectory,0,0},
-		/*17*/{DI_TEXT,      -1,14, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
-		/*18*/{DI_BUTTON,     0,15, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
-		/*19*/{DI_BUTTON,     0,15, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
+		/* 9*/{DI_CHECKBOX,   5, 9, 0, 0, ipc.opt.Autoload,  0, 0,      0,MSG(MCfgAutoload),0,0},
+		/*10*/{DI_CHECKBOX,   5,10, 0, 0, ipc.opt.Proxy, 0, 0,          0,MSG(MCfgProxy),0,0},
+		/*11*/{DI_TEXT,       9,11,22, 0, 0,         0, 0,          0,MSG(MCfgProxySrv),0,0},
+		/*12*/{DI_EDIT,      24,11,58, 0, 0,L"UpdCfgSrv",0, DIF_HISTORY,ipc.opt.ProxyName,0,0},
+		/*13*/{DI_TEXT,       9,12,22, 0, 0,         0, 0,          0,MSG(MCfgPtoxyUserPass),0,0},
+		/*14*/{DI_EDIT,      24,12,41, 0, 0,L"UpdCfgUser",0,DIF_HISTORY,ipc.opt.ProxyUser,0,0},
+		/*15*/{DI_PSWEDIT,   43,12,58, 0, 0,         0, 0,          0,ipc.opt.ProxyPass,0,0},
+		/*16*/{DI_TEXT,       5,13,58, 0, 0,         0, 0,          0,MSG(MCfgDir),0,0},
+		/*17*/{DI_EDIT,       5,14,58, 0, 0,L"UpdCfgDir",0, DIF_HISTORY,ipc.opt.TempDirectory,0,0},
+		/*18*/{DI_TEXT,      -1,15, 0, 0, 0,         0, 0, DIF_SEPARATOR, L"",0,0},
+		/*19*/{DI_BUTTON,     0,16, 0, 0, 0,         0, 0, DIF_DEFAULTBUTTON|DIF_CENTERGROUP, MSG(MOK),0,0},
+		/*20*/{DI_BUTTON,     0,16, 0, 0, 0,         0, 0, DIF_CENTERGROUP, MSG(MCancel),0,0}
 	};
 
-	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,18,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
+	HANDLE hDlg=Info.DialogInit(&MainGuid, &CfgDlgGuid,-1,-1,64,19,L"Config",DialogItems,ARRAYSIZE(DialogItems),0,0,0,0);
 
 	intptr_t ret=0;
 	if (hDlg != INVALID_HANDLE_VALUE)
 	{
-		if (Info.DialogRun(hDlg)==18)
+		if (Info.DialogRun(hDlg)==19)
 		{
 			ipc.opt.Stable=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,1,0);
 			ipc.opt.Auto=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,2,0);
@@ -2336,15 +2343,16 @@ intptr_t Config()
 			ipc.opt.SaveFarAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,6,0);
 			ipc.opt.SavePlugAfterInstall=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,7,0);
 			ipc.opt.Date=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,8,0);
-			ipc.opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,9,0);
+			ipc.opt.Autoload=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,9,0);
+			ipc.opt.Proxy=(DWORD)Info.SendDlgMessage(hDlg,DM_GETCHECK,10,0);
 			if (ipc.opt.Proxy)
 			{
-				lstrcpy(ipc.opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,11,0));
-				lstrcpy(ipc.opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,13,0));
-				lstrcpy(ipc.opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,14,0));
+				lstrcpy(ipc.opt.ProxyName,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,12,0));
+				lstrcpy(ipc.opt.ProxyUser,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,14,0));
+				lstrcpy(ipc.opt.ProxyPass,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,15,0));
 			}
 			wchar_t Buf[MAX_PATH];
-			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,16,0));
+			lstrcpy(Buf,(const wchar_t *)Info.SendDlgMessage(hDlg,DM_GETCONSTTEXTPTR,17,0));
 			if (Buf[0]==0) lstrcpy(Buf,L"%TEMP%\\UpdateEx\\");
 			lstrcpy(ipc.opt.TempDirectory,Buf);
 			ExpandEnvironmentStrings(Buf,ipc.TempDirectory,ARRAYSIZE(ipc.TempDirectory));
@@ -2360,6 +2368,7 @@ intptr_t Config()
 			settings.Set(0,L"SaveFar",ipc.opt.SaveFarAfterInstall);
 			settings.Set(0,L"SavePlug",ipc.opt.SavePlugAfterInstall);
 			settings.Set(0,L"Date",ipc.opt.Date);
+			settings.Set(0,L"Autoload",ipc.opt.Autoload);
 			settings.Set(0,L"Proxy",ipc.opt.Proxy);
 			settings.Set(0,L"Srv",ipc.opt.ProxyName);
 			settings.Set(0,L"User",ipc.opt.ProxyUser);
@@ -2372,99 +2381,8 @@ intptr_t Config()
 	return ret;
 }
 
-
-#define WM_TRAY_TRAYMSG WM_APP + 0x00001000
-#define NOTIFY_DURATION 10000
-
-LRESULT CALLBACK tray_wnd_proc(HWND wnd, UINT msg, WPARAM w_param, LPARAM l_param)
-{
-	if (msg == WM_TRAY_TRAYMSG && l_param == WM_LBUTTONDBLCLK)
-		PostQuitMessage(0);
-	return DefWindowProc(wnd, msg, w_param, l_param);
-}
-
-DWORD WINAPI NotifyProc(LPVOID)
-{
-	HICON tray_icon=nullptr;
-	HWND tray_wnd=nullptr;
-	WNDCLASSEX tray_wc;
-	NOTIFYICONDATA tray_icondata;
-
-	ZeroMemory(&tray_wc, sizeof(tray_wc));
-	ZeroMemory(&tray_icondata, sizeof(tray_icondata));
-
-	tray_icon=ExtractIcon(GetModuleHandle(nullptr), Info.ModuleName, 0);
-
-	tray_wc.cbSize=sizeof(WNDCLASSEX);
-	tray_wc.style=CS_HREDRAW|CS_VREDRAW;
-	tray_wc.lpfnWndProc=&tray_wnd_proc;
-	tray_wc.cbClsExtra=0;
-	tray_wc.cbWndExtra=0;
-	tray_wc.hInstance=GetModuleHandle(nullptr);
-	tray_wc.hIcon=tray_icon;
-	tray_wc.hCursor=LoadCursor(nullptr, IDC_ARROW);
-	tray_wc.hbrBackground=(HBRUSH)(COLOR_WINDOW + 1);
-	tray_wc.lpszMenuName=nullptr;
-	tray_wc.lpszClassName=L"UpdateNotifyClass";
-	tray_wc.hIconSm=tray_icon;
-
-	if (RegisterClassEx(&tray_wc))
-	{
-		tray_wnd=CreateWindow(tray_wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-		if (tray_wnd)
-		{
-			tray_icondata.cbSize=NOTIFYICONDATA_V3_SIZE;//sizeof(NOTIFYICONDATA);
-			tray_icondata.uID=1;
-			tray_icondata.hWnd=tray_wnd;
-			tray_icondata.uFlags=NIF_ICON|NIF_MESSAGE|NIF_INFO|NIF_TIP;
-			tray_icondata.hIcon=tray_icon;
-			tray_icondata.uTimeout=NOTIFY_DURATION;
-			tray_icondata.dwInfoFlags=NIIF_INFO|NIIF_LARGE_ICON;
-			FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountDownload,CountUpdate);
-			lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
-			lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
-			tray_icondata.uCallbackMessage=WM_TRAY_TRAYMSG;
-
-			if (Shell_NotifyIcon(NIM_ADD, &tray_icondata))
-			{
-				size_t n=CountDownload;
-				for (;;)
-				{
-					if (n!=CountDownload)
-					{
-						n++;
-						FSF.sprintf(tray_icondata.szInfo,MSG(MTrayNotify),CountDownload,CountUpdate);
-						lstrcpy(tray_icondata.szInfoTitle, MSG(MName));
-						lstrcpy(tray_icondata.szTip,tray_icondata.szInfo);
-						Shell_NotifyIcon(NIM_MODIFY, &tray_icondata);
-					}
-					MSG msg;
-					if (PeekMessage(&msg,nullptr,0,0,PM_NOREMOVE))
-					{
-						GetMessage(&msg,nullptr,0,0);
-						if (msg.message == WM_CLOSE)
-							break;
-					}
-					if (GetStatus()!=S_DOWNLOAD)
-					{
-						PostQuitMessage(0);
-						break;
-					}
-					TranslateMessage(&msg);
-					DispatchMessage(&msg);
-				}
-			}
-			Shell_NotifyIcon(NIM_DELETE, &tray_icondata);
-			DestroyWindow(tray_wnd);
-			tray_wnd=nullptr;
-		}
-	}
-	if (tray_icon) DestroyIcon(tray_icon);
-	UnregisterClass(tray_wc.lpszClassName, GetModuleHandle(nullptr));
-	CloseHandle(hNotifyThread);
-	hNotifyThread=nullptr;
-	return 0;
-}
+#include "AutoloaderThread.cpp"
+#include "NotifyThread.cpp"
 
 DWORD WINAPI ThreadProc(LPVOID /*lpParameter*/)
 {
@@ -2565,6 +2483,7 @@ VOID WINAPI SetStartupInfoW(const PluginStartupInfo* psInfo)
 	StopEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	UnlockEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	hThread=CreateThread(nullptr,0,ThreadProc,nullptr,0,nullptr);
+	hAutoloadThread=CreateThread(nullptr,0,AutoloadThreadProc,nullptr,0,nullptr);
 }
 
 VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
@@ -2591,6 +2510,9 @@ intptr_t WINAPI ConfigureW(const ConfigureInfo* Info)
 
 VOID WINAPI ExitFARW(ExitInfo* Info)
 {
+	if (hExitAutoloadThreadEvent)
+		SetEvent(hExitAutoloadThreadEvent);
+
 	if (hNotifyThread)
 	{
 		DWORD ec = 0;
@@ -2600,6 +2522,14 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 		CloseHandle(hNotifyThread);
 		hNotifyThread=nullptr;
 	}
+
+	if (hAutoloadThread)
+	{
+		WaitForSingleObject(hAutoloadThread,INFINITE);
+		CloseHandle(hAutoloadThread);
+		hAutoloadThread=nullptr;
+	}
+
 	if (hThread)
 	{
 		SetEvent(StopEvent);

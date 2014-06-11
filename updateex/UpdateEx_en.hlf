@@ -109,6 +109,10 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
  Set date format using at farmanager.com server.
 
+    #Autoload plugins#
+
+ Autoload new plugins in folder "%FARHOME%\Plugins".
+
     #Use proxy server#
 
  Whether to use proxy server to connect to farmanager.com server.
