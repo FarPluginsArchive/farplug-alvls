@@ -171,7 +171,7 @@ HANDLE StopEvent=nullptr;
 HANDLE UnlockEvent=nullptr;
 HANDLE WaitEvent=nullptr;
 HANDLE hNotifyThread=nullptr;
-HANDLE hAutoloadThread=nullptr;
+HANDLE hAutoloadThread_1=nullptr, hAutoloadThread_2=nullptr;
 HANDLE hExitAutoloadThreadEvent=nullptr;
 
 CRITICAL_SECTION cs;
@@ -2483,7 +2483,10 @@ VOID WINAPI SetStartupInfoW(const PluginStartupInfo* psInfo)
 	StopEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	UnlockEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	hThread=CreateThread(nullptr,0,ThreadProc,nullptr,0,nullptr);
-	hAutoloadThread=CreateThread(nullptr,0,AutoloadThreadProc,nullptr,0,nullptr);
+	hExitAutoloadThreadEvent=CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	hAutoloadThread_1=CreateThread(nullptr,0,AutoloadThreadProc,nullptr,0,nullptr);
+	bool bAltPluginsDir=true;
+	hAutoloadThread_2=CreateThread(nullptr,0,AutoloadThreadProc,&bAltPluginsDir,0,nullptr);
 }
 
 VOID WINAPI GetPluginInfoW(PluginInfo* pInfo)
@@ -2523,12 +2526,19 @@ VOID WINAPI ExitFARW(ExitInfo* Info)
 		hNotifyThread=nullptr;
 	}
 
-	if (hAutoloadThread)
+	if (hAutoloadThread_1)
 	{
-		WaitForSingleObject(hAutoloadThread,INFINITE);
-		CloseHandle(hAutoloadThread);
-		hAutoloadThread=nullptr;
+		WaitForSingleObject(hAutoloadThread_1,INFINITE);
+		CloseHandle(hAutoloadThread_1);
+		hAutoloadThread_1=nullptr;
 	}
+	if (hAutoloadThread_2)
+	{
+		WaitForSingleObject(hAutoloadThread_2,INFINITE);
+		CloseHandle(hAutoloadThread_2);
+		hAutoloadThread_2=nullptr;
+	}
+	CloseHandle(hExitAutoloadThreadEvent);
 
 	if (hThread)
 	{

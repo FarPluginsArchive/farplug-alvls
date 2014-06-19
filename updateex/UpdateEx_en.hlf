@@ -111,7 +111,7 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
     #Autoload plugins#
 
- Autoload new plugins in folder "%FARHOME%\Plugins".
+ Autoload new plugins in folders "%FARHOME%\Plugins" and "%FARPROFILE%\Plugins".
 
     #Use proxy server#
 

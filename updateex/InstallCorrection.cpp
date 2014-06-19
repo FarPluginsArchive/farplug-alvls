@@ -258,7 +258,7 @@ bool InstallCorrection(const wchar_t *ModuleName)
 		}
 		return false;
 	}
-	else if (Attr==FILE_ATTRIBUTE_DIRECTORY) // значит новый модуль!
+	else if (Attr&FILE_ATTRIBUTE_DIRECTORY) // значит новый модуль!
 	{
 		if (FindFile(ModuleName,L".dll",FullFileName))
 		{

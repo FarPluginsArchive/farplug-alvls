@@ -51,12 +51,13 @@ bool LoadDLL(const wchar_t *Dir)
 }
 
 
-DWORD WINAPI AutoloadThreadProc(LPVOID)
+DWORD WINAPI AutoloadThreadProc(LPVOID lpParam)
 {
 	wchar_t Dir[MAX_PATH];
-	GetModuleFileName(nullptr,Dir,MAX_PATH);
-	*(StrRChr(Dir,nullptr,L'\\')+1)=0;
-	lstrcat(Dir,L"Plugins\\");
+	if (lpParam)
+		ExpandEnvironmentStrings(L"%FARPROFILE%\\Plugins\\",Dir,ARRAYSIZE(Dir));
+	else
+		ExpandEnvironmentStrings(L"%FARHOME%\\Plugins\\",Dir,ARRAYSIZE(Dir));
 
 	HANDLE hDir=CreateFile(Dir, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 	if (hDir!=INVALID_HANDLE_VALUE)
@@ -64,7 +65,6 @@ DWORD WINAPI AutoloadThreadProc(LPVOID)
 		HANDLE hChangeEvent=CreateEvent(nullptr, FALSE, FALSE, nullptr);
 		if (hChangeEvent)
 		{
-			hExitAutoloadThreadEvent=CreateEvent(nullptr, FALSE, FALSE, nullptr);
 			if (hExitAutoloadThreadEvent)
 			{
 				OVERLAPPED Overlapped;
@@ -89,15 +89,10 @@ DWORD WINAPI AutoloadThreadProc(LPVOID)
 									if (WaitForSingleObject(hExitAutoloadThreadEvent, 0) != WAIT_TIMEOUT)
 										break;
 
-									auto IsDll = [&NotifyInfo]()->bool
-									{
-										return !lstrcmpi(NotifyInfo->FileName + NotifyInfo->FileNameLength/sizeof(wchar_t) - 4, L".dll");
-									};
-
-									wchar_t str[MAX_PATH];
-									lstrcpyn(str,NotifyInfo->FileName,NotifyInfo->FileNameLength/sizeof(wchar_t)+1);
-									*(str+NotifyInfo->FileNameLength/sizeof(wchar_t)+1)=0;
-									lstrcat(lstrcpy(FullName,Dir),str);
+									wchar_t Name[MAX_PATH];
+									lstrcpyn(Name,NotifyInfo->FileName,NotifyInfo->FileNameLength/sizeof(wchar_t)+1);
+									*(Name+NotifyInfo->FileNameLength/sizeof(wchar_t)+1)=0;
+									lstrcat(lstrcpy(FullName,Dir),Name);
 
 									bool Continue=false;
 									HANDLE Handles2[] = {UnlockEvent, hExitAutoloadThreadEvent};
@@ -105,17 +100,19 @@ DWORD WINAPI AutoloadThreadProc(LPVOID)
 									switch (NotifyInfo->Action)
 									{
 										case FILE_ACTION_ADDED:
-											if (ipc.opt.Autoload && GetFileAttributes(FullName)==FILE_ATTRIBUTE_DIRECTORY)
+											if (ipc.opt.Autoload && (GetFileAttributes(FullName)&FILE_ATTRIBUTE_DIRECTORY))
 											{
+												Sleep(100);
 												LoadDLL(FullName);
 												if (WaitForMultipleObjects(ARRAYSIZE(Handles2), Handles2, FALSE, INFINITE) == WAIT_OBJECT_0)
 													GetUpdModulesInfo();
 												break;
 											}
+
 										case FILE_ACTION_RENAMED_NEW_NAME:
-											if (ipc.opt.Autoload && IsDll())
+											if (ipc.opt.Autoload && !lstrcmpi(Name + NotifyInfo->FileNameLength/sizeof(wchar_t) - 4, L".dll"))
 											{
-												Sleep(1000);
+												Sleep(100);
 												Info.PluginsControl(INVALID_HANDLE_VALUE, PCTL_LOADPLUGIN, PLT_PATH, FullName);
 												if (WaitForMultipleObjects(ARRAYSIZE(Handles2), Handles2, FALSE, INFINITE) == WAIT_OBJECT_0)
 													GetUpdModulesInfo();
@@ -135,10 +132,10 @@ DWORD WINAPI AutoloadThreadProc(LPVOID)
 												}
 											}
 										}
+
 										case FILE_ACTION_RENAMED_OLD_NAME:
-											if (Continue || IsDll())
+											if (Continue || !lstrcmpi(Name + NotifyInfo->FileNameLength/sizeof(wchar_t) - 4, L".dll"))
 											{
-//MessageBox(0,FullName,L"FILE_ACTION_RENAMED_OLD_NAME",MB_OK);
 												HANDLE Plugin = reinterpret_cast<HANDLE>(Info.PluginsControl(INVALID_HANDLE_VALUE, PCTL_FINDPLUGIN, PFM_MODULENAME, FullName));
 												if (Plugin)
 													Info.PluginsControl(Plugin, PCTL_UNLOADPLUGIN, 0, nullptr);
@@ -157,7 +154,6 @@ DWORD WINAPI AutoloadThreadProc(LPVOID)
 							break;
 					}
 				}
-				CloseHandle(hExitAutoloadThreadEvent);
 			}
 			CloseHandle(hChangeEvent);
 		}

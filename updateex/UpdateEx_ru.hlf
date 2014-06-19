@@ -112,7 +112,7 @@ $^ #Copyright (C) Alex Alabuzhev, Alexey Samlyukov#
 
     #Автозагрузка плагинов#
 
- Автозагружать новые плагины в папке "%FARHOME%\Plugins".
+ Автозагружать новые плагины в папках "%FARHOME%\Plugins" и "%FARPROFILE%\Plugins".
 
     #Использовать прокси-сервер#
 
