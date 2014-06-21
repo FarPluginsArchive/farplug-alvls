@@ -153,6 +153,8 @@ DWORD WINAPI AutoloadThreadProc(LPVOID lpParam)
 						else
 							break;
 					}
+					if (WaitForSingleObject(hExitAutoloadThreadEvent, 0) != WAIT_TIMEOUT)
+						break;
 				}
 			}
 			CloseHandle(hChangeEvent);

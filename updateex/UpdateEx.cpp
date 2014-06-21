@@ -2483,7 +2483,7 @@ VOID WINAPI SetStartupInfoW(const PluginStartupInfo* psInfo)
 	StopEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	UnlockEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	hThread=CreateThread(nullptr,0,ThreadProc,nullptr,0,nullptr);
-	hExitAutoloadThreadEvent=CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	hExitAutoloadThreadEvent=CreateEvent(nullptr,TRUE,FALSE,nullptr);
 	hAutoloadThread_1=CreateThread(nullptr,0,AutoloadThreadProc,nullptr,0,nullptr);
 	bool bAltPluginsDir=true;
 	hAutoloadThread_2=CreateThread(nullptr,0,AutoloadThreadProc,&bAltPluginsDir,0,nullptr);
