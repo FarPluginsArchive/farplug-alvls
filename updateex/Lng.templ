@@ -1,13 +1,15 @@
 ﻿#
 lng.hpp
-3
+4
 UpdateEx_ru.lng Russian "Russian (Русский)"
 UpdateEx_en.lng English "English"
 UpdateEx_es.lng Spanish "Spanish"
+UpdateEx_es.lng Polish "Polish (Polski)"
 
 hhead:#pragma once
 
 MName
+"UpdateEx"
 "UpdateEx"
 "UpdateEx"
 "UpdateEx"
@@ -16,68 +18,82 @@ MAvailableUpdates
 "Доступные обновления"
 "Available updates"
 "Actualizaciones disponibles"
+"Dostępne aktualizacje"
 
 MExitFAR
 "Выйдите из Far Manager для завершения обновления"
 "Exit from Far Manager to complete update"
 "Salir de Far Manager para completar actualización"
+"Należy zamknąć Far Manager, aby zakończyć aktualizacje"
 
 MExitFARAsk
 "Выйти из FAR?"
 "Quit FAR?"
 "Salir de FAR?"
+"Zamknąć Far?"
 
 MCantGetInstallInfo
 "Не удалось получить информацию об установленных модулях"
 "Can't get installed modules information"
 "No se puede obtener información acerca de módulos instalados"
+"Nie mogę pobrać informacji o zainstalowanych modułach"
 
 MCantCreatTmp
 "Не удалось создать временный каталог"
 "Can't create temporary folder"
 "No se puede crear carpeta temporal"
+"Nie mogę utworzyć folderu tymczasowego"
 
 MCantGetFarList
 "Не удалось скачать файл-обновлений Far Manager"
 "Can't download Far Manager updates"
 "No se puede descargar actualizaciones de Far Manager"
+"Nie mogę pobrać aktualizacji Far Manager"
 
 MCantGetPlugList
 "Не удалось скачать файл-обновлений плагинов"
 "Can't download plugins updates"
 "No se puede descargar actualizaciones de complementos"
+"Nie mogę pobrać aktualizacji wtyczek"
 
 MCantGetFarUpdInfo
 "Не удалось прочитать информацию об обновлении Far Manager"
 "Can't read Far Manager update information"
 "No se puede leer información de actualización de Far Manager"
+"Nie mogę odczytać informacji o aktualizacji Far Manager"
 
 MCantGetPlugUpdInfo
 "Не удалось прочитать информацию об обновлении плагинов"
 "Can't read plugins update information"
 "No se puede leer información de actualización de complementos"
+"Nie mogę odczytać informacji o aktualizacji wtyczek"
 
 MCantConnect
 "Не удалось подключиться к серверу обновлений"
 "Can't connect to update server"
 "No se puede conectar a servidor de actualización"
+"Nie mogę połączyć się z serwerem aktualizacji"
 
 MCantGetInfo
 "Не удалось получить информацию об обновлении"
 "Can't get update information"
 "No se puede obtener información de actualización"
+"Nie mogę pobrać informacji o aktualizacji"
 
 MCantCompleteUpd
 "Предыдущее обновление не было завершено"
 "Previous update was not completed"
 "Actualización previa no fue completada"
+"Poprzednia aktualizacja nie została zakończona"
 
 MCantCreateProcess
 "Не удалось запустить процесс"
 "Can't run process"
 "No se puede ejecutar proceso"
+"Nie mogę uruchomić procesu"
 
 MListButton
+" F1-F4,F6-F8,Ins,Del,Ctrl-H,Ctrl-PgUp/PgDn,Shift-Enter "
 " F1-F4,F6-F8,Ins,Del,Ctrl-H,Ctrl-PgUp/PgDn,Shift-Enter "
 " F1-F4,F6-F8,Ins,Del,Ctrl-H,Ctrl-PgUp/PgDn,Shift-Enter "
 " F1-F4,F6-F8,Ins,Del,Ctrl-H,Ctrl-PgUp/PgDn,Shift-Enter "
@@ -86,53 +102,64 @@ MUpdInfo
 " Информация об обновлении "
 " Update information "
 " Información de actualización "
+" Informacja o aktualizacji "
 
 MDownload
 "Загрузить "
 "Download"
 "Descargar"
+"Pobierz"
 
 MUpdate
 " Обновить "
 " Update "
 " Actualizar "
+" Aktualizuj "
 
 MInstall
 "Установить"
 "Install "
 "Instalar"
+"Instaluj"
 
 MUndo
 " Откатить "
 "  Undo  "
 "Deshacer"
+" Wycofaj "
 
 MCancel
 "Отмена"
 "Cancel"
 "Cancelar"
+"Anuluj"
 
 MStandard
 "<Входит в дистрибутив Far Manager>"
 "<Included in Far Manager distribution>"
 "<Incluído en archivo comprimido Far Manager>"
+"<Włączone do dystrybucji Far Manager>"
 
 MIsNonInfo
 "<Информация недоступна>"
 "<Information is not available>"
 "<Información no está disponible>"
+"<Informacja nie dostępna>"
 
 MCantDownloadArc
 "<Не удалось загрузить архив>"
 "<Can't download archive>"
 "<No se puede descargar archivo>"
+"<Nie mogę pobrać archiwum>"
 
 MError
 "<Error>"
 "<Error>"
 "<Error>"
+"<Błąd>"
 
 MLoaded
+"<Ok>"
 "<Ok>"
 "<Ok>"
 "<Ok>"
@@ -141,38 +168,46 @@ MSepInfo
 " %d элементов "
 " %d items "
 " %d ítems "
+" %d pozycji "
 
 MSepInfo2
 " %d (%d) выбрано "
 " %d (%d) selected "
 " %d (%d) seleccionado "
+" %d (%d) zaznaczono "
 
 MAskCancelDownload
 "Отменить загрузку обновлений?"
 "Cancel downloading updates?"
 "Quiere realmente cancelar actualizaciones de descarga?"
+"Przerwać pobieranie aktualizacji?"
 
 MSendUnknown
 "Неизвестный"
 "Unknown"
 "Desconocido"
+"Nieznane"
 
 MSendLogin
 "Логин/пароль:"
 "Login/password:"
 "Login/contraseña:"
+"Użytkownik/hasło:"
 
 MSendUID
 "UID плагина:"
 "Plugin UID:"
 "UID complemento:"
+"UID wtyczki:"
 
 MSendVer
 "Версия:"
 "Version:"
 "Versión:"
+"Wersja:"
 
 MSendFarVer
+"Far:"
 "Far:"
 "Far:"
 "Far:"
@@ -181,148 +216,178 @@ MSendFlag
 "Флаги:"
 "Flags:"
 "Flags:"
+"Flagi:"
 
 MSendWin
 "ОС:"
 "OSes:"
 "SOs:"
+"System:"
 
 MSendFile
 "Путь к rar,zip,7z-архиву:"
 "Path to rar,zip,7z-archive:"
 "Ruta a archivo rar,zip,7z:"
+"Ścieżka do archiwum rar,zip,7z:"
 
 MSend
 "Отправить"
 "Send"
 "Enviar"
+"Wyślij"
 
 MCfgStable
 "Обновлять стабильную сборку Far Manager"
 "Update Far Manager stable build"
 "Actualizar Far Manager versión estable"
+"Aktualizuj Far w wersji stabilnej"
 
 MCfgAuto
 "Скачивать архивы автоматически"
 "Download archives automatically"
 "Descargar archivos automáticamente"
+"Automatycznie pobierać aktualizacje"
 
 MCfgTrayNotify
 "Показывать уведомление в трее"
 "Display notification in tray"
 "Mostrar notificación en barra de tareas"
+"Wyświetlaj informacje w obszarze powiadomień"
 
 MCfgWait
 "секунд, ждать ответа сервера"
 "sec, to wait the server response"
 "segundos, para esperar respuesta de servidor"
+"sek. czekania na odpowiedź serwera"
 
 MCfgSaveFar
 "Сохранять архивы Far Manager после установки"
 "Save Far Manager packages after install"
 "Guardar paquetes de Far Manager luego de instalar"
+"Zachowaj pakiety Far Manager po instalacji"
 
 MCfgSavePlug
 "Сохранять архивы плагинов после установки"
 "Save plugins packages after install"
 "Guardar paquetes de complementos luego de instalación"
+"Zachowaj pakiety wtyczek po instalacji"
 
 MCfgDate
 "Формат даты: YYYY-MM-DD"
 "Date format: YYYY-MM-DD"
 "Formato de fecha: YYYY-MM-DD"
+"Format daty: RRRR-MM-DD"
 
 MCfgAutoload
 "Автозагружать плагины"
 "Autoload plugins"
 "Autoload plugins"
+"Automatycznie wczytaj wtyczki"
 
 MCfgDir
 "Временный каталог:"
 "Temporary folder:"
 "Carpeta temporal:"
+"Folder tymczasowy:"
 
 MCfgProxy
 "Использовать прокси-сервер"
 "Use proxy server"
 "Usar servidor proxy"
+"Użyj serwera proxy"
 
 MCfgProxySrv
 "Адрес:Порт"
 "Address:port"
 "Servidor proxy:"
+"Adres:port"
 
 MCfgPtoxyUserPass
 "Логин/пароль"
 "User/Pass"
 "Usuario/Contraseña:"
+"Użytkownik/Hasło:"
 
 MOK
 "ОК"
 "OK"
 "Aceptar"
+"OK"
 
 MTrayNotify
 "Загрузка обновлений (%d / %d)..."
 "Downloading updates (%d / %d)..."
 "Downloading updates (%d / %d)..."
+"Pobieranie aktualizcacji (%d / %d)..."
 
 MWait
 "Запрос данных с веб-сайта..."
 "Requesting data from web-site..."
 "Requiriendo datos de sitio-web..."
+"Pobieranie danych z serwera..."
 
 MNewModules
 "Новые модули"
 "New modules"
 "Módulos nuevos"
+"Nowe moduły"
 
 MTime_0
 "За неделю"
 "For the week"
 "Para la semana"
+"Co tydzień"
 
 MTime_1
 "За месяц"
 "For the month"
 "Para el mes"
+"Co miesiąc"
 
 MTime_2
 "За квартал"
 "For the quarter"
 "Para el cuarto de año"
+"Co kwartał"
 
 MTime_3
 "За полугодие"
 "For the halfyear"
 "Para la mitad de año"
+"Co pół roku"
 
 MTime_4
 "За год"
 "For the year"
 "Para el año"
+"Co rok"
 
 MTime_5
 "За период.."
 "For the period.."
 "Para el período..."
+"W okresie..."
 
 MEditPath
 "Изменить путь:"
 "Edit path:"
 "Editar ruta:"
+"Edytuj ścieżkę:"
 
 MDel
 "Удаление"
 "Delete"
 "Borrar"
+"Usuń"
 
 MDelBody
 "Вы хотите переместить модуль в Корзину"
 "Do you wish to move the module to Recycle Bin?"
 "Desea mover a la Papelera de Reciclaje el módulo"
+"Chcesz usuąć moduł do Kosza?"
 
 MUndoUpdates
 "Откат обновлений"
 "Roll back updates"
 "Volviendo atrás las actualizaciones"
+"Wycofaj aktualizacje"
